@@ -442,7 +442,7 @@ if __name__ == '__main__':
     # 数据源：9 张 .xls 预核单 22 行 ground truth (含合同价 17 行)
     # 评估目标：客户实际合同价 (vs 仅材料 ¥/m²)
     import os
-    csv_path = '/tmp/yiwei_eval/ground_truth_22rows.csv'
+    csv_path = 'data/ground_truth_22rows.csv'
     if os.path.exists(csv_path):
         print("\n" + "═" * 60)
         print("📊 Step 7: Contract Price Eval (Phase B+C 完整公式)")

@@ -146,14 +146,23 @@ Open `http://localhost:8501`. The bundled `data/demo.db` loads automatically (an
 
 ### Phase C 数据源
 
-| .xls 文件 | 客户/类型 | 订单行数 | 合同价 |
+| .xls 文件 | 客户/类型 (脱敏) | 订单行数 | 合同价 |
 |---|---|---|---|
-| 4L 外贸水剂 ×2 (BC) | 出口加纳 | 2 | ✅ |
-| YW-2026-02-02 (亏损批) | 新安大单 | 3 | ✅ (-15% ~ -18%) |
-| YW-2026-02-04 / 04-01 / 04-07 / 04-09 | 新安 | 11 | ✅ |
-| 硅酮硬管纸箱 (含数量阶梯) | 新安 | 7 | 部分 |
+| 4L 外贸水剂 ×2 (BC) | 出口 | 2 | ✅ |
+| YW-2026-02-02 (亏损批) | 大型农化客户 B 大单 | 3 | ✅ (-15% ~ -18%) |
+| YW-2026-02-04 / 04-01 / 04-07 / 04-09 | 大型农化客户 B | 11 | ✅ |
+| 硅酮硬管纸箱 (含数量阶梯) | 大型农化客户 B | 7 | 部分 |
 
-→ `/tmp/yiwei_eval/ground_truth_22rows.csv`
+**公开 ground truth**：[`data/ground_truth_22rows.csv`](data/ground_truth_22rows.csv) — 22 行 .xls 提取数据 (客户名/产品名/材料品牌已脱敏，cost/contract 数字保持精确以便 reproduce)。
+
+**复现方法**：
+```bash
+git clone https://github.com/wwwaaarrthur/yiwei-cost-engine.git
+cd yiwei-cost-engine && pip install -r requirements.txt
+python3 eval_runner.py    # Step 7 应输出 合同价 MAPE 17.1%
+```
+
+**私有源数据**：原 9 张 .xls 预核单 + 含真实客户/品牌名的 ground truth 留私有 (`/tmp/yiwei_eval/` 或 `data/process_sheets.db`，未在 git 中)。脱敏映射见 [`anonymize_mapping.example.json`](anonymize_mapping.example.json) 公开模板 + 本地私有 `anonymize_mapping.json` (gitignored)。csv 脱敏脚本：[`anonymize_csv.py`](anonymize_csv.py)。
 
 ### Phase B → Phase C 改善路径
 
