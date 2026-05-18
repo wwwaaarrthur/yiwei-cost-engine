@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """毅伟包装 · 纸箱成本AI智能核算系统 v3.0"""
+import os
 import streamlit as st
 import pandas as pd
 import sqlite3
@@ -8,7 +9,10 @@ import plotly.graph_objects as go
 from datetime import datetime
 import re, numpy as np
 
-DB = "data/process_sheets.db"
+# DB 路径策略：本地有生产数据库则用真实数据；公开部署（Streamlit Cloud）fallback 到 anonymized demo.db
+_DB_PROD = "data/process_sheets.db"
+_DB_DEMO = "data/demo.db"
+DB = _DB_PROD if os.path.exists(_DB_PROD) else _DB_DEMO
 
 st.set_page_config(page_title="毅伟包装", page_icon="📦", layout="wide")
 
