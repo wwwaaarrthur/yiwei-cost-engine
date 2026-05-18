@@ -1,0 +1,47 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Streamlit secrets
+.streamlit/secrets.toml
+.streamlit/credentials.toml
+
+# Environment
+.env
+.env.*
+
+# Real production data (contains real client names, NEVER commit)
+data/process_sheets.db
+data/process_sheets.db-journal
+data/raw/
+data/original/
+data/*.xlsx
+data/*.docx
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# OS
+Thumbs.db
+
+# Build
+dist/
+build/
+*.egg
+
+# Private anonymization mapping (contains real company names)
+anonymize_mapping.json
+
+# Database backups (may contain pre-anonymization data)
+*.db.bak-*
+data/*.db.bak-*

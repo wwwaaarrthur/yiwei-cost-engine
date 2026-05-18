@@ -1,0 +1,26 @@
+{
+  "_note": "公开示例模板 · 展示 anonymize_mapping.json 结构 · 真实映射文件 anonymize_mapping.json 已 gitignore，私有保留",
+  "_usage": "cp anonymize_mapping.example.json anonymize_mapping.json && 填入真实映射 && python3 anonymize.py",
+
+  "CLIENT_MAP": {
+    "<real_client_name_1>": "<anonymized_label_1>",
+    "<real_client_name_2>": "<anonymized_label_2>",
+    "_comment": "真实客户名 → 脱敏标签（如 大型农化客户A / 区域果农客户C）"
+  },
+
+  "SUPPLIER_MAP": {
+    "<real_supplier_name>": "<anonymized_label>",
+    "_comment": "真实供应商名 → 供应商A/B/C..."
+  },
+
+  "BRAND_MAP": {
+    "<real_brand_name>": "<anonymized_label>",
+    "_comment": "真实品牌名 → 品牌J/K/W..."
+  },
+
+  "SENSITIVE_TOKENS": [
+    "<token1>",
+    "<token2>",
+    "_comment": "兜底敏感 token：未在 *_MAP 中匹配到的 token 会被 hash 化"
+  ]
+}
