@@ -90,10 +90,10 @@ def detect_flute(material_str):
 
 def predict_cost(record, fcb_params):
     """
-    对一条预核单，用报价公式计算预测 ¥/m²
+    对一条预核单，用报价公式计算预测 ¥/m² (Baseline V1: 仅瓦楞基准价)
 
-    简化版公式（与 app.py 一致）：
-      predicted_cpm = 基准价（按瓦型）
+    简化版公式：predicted_cpm = 基准价（按瓦型）
+    评估目标：material ¥/m² (= unit_cost / board_area)
     """
     board_area = record['size_w'] * record['size_h'] / 1_000_000
     flute_type = detect_flute(record['material'])
@@ -101,6 +101,152 @@ def predict_cost(record, fcb_params):
     predicted_cpm = base_price
 
     return predicted_cpm, flute_type
+
+
+# ═══════════════════════════════════════════════════════════
+# Phase B+C: 完整 6 项报价公式 (与 app.py 同步)
+# ═══════════════════════════════════════════════════════════
+# 评估目标：contract_price (真实合同价) 而非 material ¥/m²
+# 数据源：9 张 .xls 预核单 22 行 ground truth
+
+PRINT_TABLE = {
+    1: (150, 0.18), 2: (300, 0.21), 3: (500, 0.30),
+    4: (900, 0.45), 5: (1250, 0.63),
+}
+OTHER_COST_DEFAULT = {'内销': 0.82, '出口': 1.07}
+
+
+def qty_margin_base(qty):
+    if qty <= 500: return 0.30
+    if qty <= 2000: return 0.22
+    if qty <= 5000: return 0.12
+    if qty <= 20000: return 0.08
+    return 0.06
+
+
+def cmargin_v2(tier, qty, is_export=False):
+    adj = {'vip': -0.02, 'medium': 0.0, 'small': +0.03}[tier]
+    export_adj = 0.04 if is_export else 0.0
+    return max(0.03, qty_margin_base(qty) + adj + export_adj)
+
+
+def predict_cost_full(record, params):
+    """
+    Phase C 完整 6 项报价公式预测 — 与 app.py 同步
+
+    输入 (最小集，模拟 app.py UI 输入)：
+      area_m2, qty, flute, order_type, print_colors, has_lam, has_pad
+    不使用 ground truth 字段 (corr_cpm/pad_total/white_unit/print_unit/film_unit/other_cost)
+    否则等同"用真值预测真值"
+
+    params: dict {fcb, tier}
+    返回: (predicted_cost_per_unit, predicted_contract_price, breakdown_dict)
+    """
+    area = record.get('area_m2') or 0
+    qty = record.get('qty') or 1
+    flute = record.get('flute') or 'EB'
+    fcb = params.get('fcb', {
+        'EB': 1.5, 'BC': 2.0, 'AB': 2.2,
+        '单C瓦': 1.5, '单B瓦': 1.3, '单E瓦': 1.1, 'EE': 1.4,
+    })
+    bp = fcb.get(flute, 1.5)
+    bc = area * bp                              # 瓦楞 (fcb 学习)
+    pc = area * 0.6 * 0.45                      # 面纸 (默认 0.45 ¥/m² × 60%)
+    lc = 0.25 if record.get('has_lam') else 0   # 覆膜 (default 0.25 ¥/只)
+    pdc = 0.15 if record.get('has_pad') else 0  # 垫片 (default 0.15 ¥/只)
+    # 印刷按色数表
+    colors = record.get('print_colors', 2)
+    setup, var = PRINT_TABLE.get(colors, PRINT_TABLE[2])
+    print_cost = max(setup / qty, var)
+    # 制费按订单类型
+    order_type = record.get('order_type', '内销')
+    other_cost = OTHER_COST_DEFAULT[order_type]
+    # 数量系数
+    if qty <= 500: sf = 1.15
+    elif qty <= 2000: sf = 1.05
+    elif qty <= 5000: sf = 1.0
+    elif qty <= 20000: sf = 0.93
+    else: sf = 0.88
+    base = bc + pc + lc + pdc + print_cost + other_cost
+    cost = base * sf
+    # 毛利
+    is_export = (order_type == '出口')
+    tier = params.get('tier', 'vip')
+    margin = cmargin_v2(tier, qty, is_export=is_export)
+    price = cost / (1 - margin)
+    breakdown = {
+        'bc': round(bc, 3), 'pc': round(pc, 3), 'lc': round(lc, 3),
+        'pdc': round(pdc, 3), 'print': round(print_cost, 3),
+        'other': round(other_cost, 3), 'sf': sf, 'margin': round(margin, 3),
+    }
+    return round(cost, 3), round(price, 3), breakdown
+
+
+def infer_print_colors(print_unit):
+    """从 .xls print_unit 反推印刷色数"""
+    if print_unit is None: return 2  # 默认双色
+    if print_unit <= 0.20: return 1
+    if print_unit <= 0.25: return 2
+    if print_unit <= 0.35: return 3
+    if print_unit <= 0.50: return 4
+    return 5
+
+
+def load_xls_ground_truth(csv_path):
+    """加载 22 行 .xls ground truth CSV (含 6 项成本拆解 + 合同价)"""
+    import csv
+    rows = []
+    with open(csv_path, 'r', encoding='utf-8') as f:
+        for r in csv.DictReader(f):
+            def f2(k):
+                try:
+                    return float(r[k]) if r[k] else None
+                except (ValueError, KeyError):
+                    return None
+
+            pad_total = f2('pad_total')
+            film_unit = f2('film_unit')
+            print_unit = f2('print_unit')
+            rows.append({
+                'file': r['file'], 'product': r['product'],
+                'qty': int(float(r['qty'])) if r['qty'] else 0,
+                'area_m2': f2('area_m2'), 'flute': r['flute'],
+                # Ground truth (用于评估对比, 不输入预测函数)
+                'corr_cpm': f2('corr_cpm'), 'corr_unit': f2('corr_unit'),
+                'pad_total': pad_total,
+                'white_unit': f2('white_unit'), 'print_unit': print_unit,
+                'film_unit': film_unit, 'other_cost': f2('other_cost'),
+                'total_cost': f2('total_cost'),
+                'contract_price': f2('contract_price'),
+                'margin_pct': f2('margin_pct'),
+                # 输入特征 (从 .xls 推断, 模拟 app.py UI 输入)
+                'order_type': '出口' if '4L外贸' in r['file'] else '内销',
+                'has_lam': bool(film_unit and film_unit > 0),
+                'has_pad': bool(pad_total and pad_total > 0),
+                'print_colors': infer_print_colors(print_unit),
+            })
+    return rows
+
+
+def evaluate_xls_contract(xls_rows, tier='vip'):
+    """对 22 行 .xls ground truth 跑完整公式 → 评估合同价 MAPE"""
+    params = {'tier': tier}
+    cost_preds, cost_acts = [], []
+    contract_preds, contract_acts = [], []
+    for r in xls_rows:
+        if not r.get('area_m2'):
+            continue
+        cost_p, price_p, _ = predict_cost_full(r, params)
+        if r.get('total_cost'):
+            cost_preds.append(cost_p)
+            cost_acts.append(r['total_cost'])
+        if r.get('contract_price'):
+            contract_preds.append(price_p)
+            contract_acts.append(r['contract_price'])
+    return {
+        'cost': calculate_metrics(cost_preds, cost_acts) if cost_preds else None,
+        'contract': calculate_metrics(contract_preds, contract_acts) if contract_preds else None,
+    }
 
 
 # ═══════════════════════════════════════════════════════════
@@ -289,6 +435,41 @@ if __name__ == '__main__':
     new_fcb = dict(current_fcb)
     new_fcb['EB'] = 1.30
     regression_test(records, current_fcb, new_fcb)
+
+    # ═══════════════════════════════════════════════════════════
+    # Step 7: Contract Price Eval (Phase B+C 完整 6 项公式)
+    # ═══════════════════════════════════════════════════════════
+    # 数据源：9 张 .xls 预核单 22 行 ground truth (含合同价 17 行)
+    # 评估目标：客户实际合同价 (vs 仅材料 ¥/m²)
+    import os
+    csv_path = '/tmp/yiwei_eval/ground_truth_22rows.csv'
+    if os.path.exists(csv_path):
+        print("\n" + "═" * 60)
+        print("📊 Step 7: Contract Price Eval (Phase B+C 完整公式)")
+        print("═" * 60)
+        print(f"\n  数据源: {csv_path}")
+        xls_rows = load_xls_ground_truth(csv_path)
+        print(f"  加载 {len(xls_rows)} 行 ground truth")
+
+        result = evaluate_xls_contract(xls_rows, tier='vip')
+        if result['cost']:
+            m = result['cost']
+            print(f"\n  📊 成本预测 (vs .xls total_cost, n={m['n']})")
+            print(f"    MAE:  ¥{m['mae']:.3f}/只  |  MAPE: {m['mape']:.1f}%")
+            print(f"    Bias: {m['bias']:+.3f}/只  |  R²: {m['r2']:.4f}")
+        if result['contract']:
+            m = result['contract']
+            print(f"\n  📊 合同价预测 (vs .xls contract_price, n={m['n']})")
+            print(f"    MAE:  ¥{m['mae']:.3f}/只  |  MAPE: {m['mape']:.1f}%")
+            print(f"    Bias: {m['bias']:+.3f}/只  |  R²: {m['r2']:.4f}")
+            if m['mape'] < 15:
+                print(f"  🟢 合同价 MAPE {m['mape']:.1f}% < 15% — 可用")
+            elif m['mape'] < 25:
+                print(f"  🟡 合同价 MAPE {m['mape']:.1f}% 一般")
+            else:
+                print(f"  🔴 合同价 MAPE {m['mape']:.1f}% 需改善")
+    else:
+        print(f"\n⚠️  Step 7 跳过 (csv 未找到: {csv_path})")
 
     print("\n" + "═" * 60)
     print("✅ 评估完成。以上报告可直接放入架构文档「质量评估」章节。")

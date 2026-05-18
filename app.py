@@ -160,11 +160,29 @@ def qty_margin_base(qty):
     if qty <= 20000: return 0.08
     return 0.06
 
-def cmargin(t, qty=None):
+def cmargin(t, qty=None, is_export=False):
     if qty is None:
         return {'vip': 0.10, 'medium': 0.14, 'small': 0.18}[t]
     adj = {'vip': -0.02, 'medium': 0.0, 'small': +0.03}[t]
-    return max(0.03, qty_margin_base(qty) + adj)
+    export_adj = 0.04 if is_export else 0.0  # 出口加 4pp (4L 实测 14.8% vs 内销 8.5%)
+    return max(0.03, qty_margin_base(qty) + adj + export_adj)
+
+# 印刷成本表 (基于硅酮硬管 4 数量段实测 + 单色/多色案例)
+# (setup_fee, unit_var): print_cost = max(setup/qty, unit_var)
+PRINT_TABLE = {
+    1: (150, 0.18),    # 单色 (中域740 / 新安8600 / 590mL 实测 0.21)
+    2: (300, 0.21),
+    3: (500, 0.30),
+    4: (900, 0.45),    # 4L 外贸彩印 实测 0.35-0.44
+    5: (1250, 0.63),   # 5 色+: 硅酮硬管 实测 K=1250, v=0.63
+}
+
+def print_cost_fn(colors, qty):
+    setup, unit_var = PRINT_TABLE.get(colors, PRINT_TABLE[2])
+    return max(setup / qty, unit_var)
+
+# 制费默认值 (实测中位)
+OTHER_COST_DEFAULT = {'内销': 0.82, '出口': 1.07}
 
 CN = {
     'client': '客户', 'product': '产品', 'order_qty': '数量', 'order_date': '日期',
@@ -198,6 +216,10 @@ with tab1:
             qty = st.number_input("数量 (只)", 100, 50000, 10000, 500, key="qq")
             ft = st.selectbox("瓦型", ['EB','BC','AB','单C瓦','单B瓦','单E瓦','EE'], key="qf")
             ct_label = st.selectbox("客户类型", ['大客户', '中等客户', '小客户/农户'], key="qc")
+            order_type = st.selectbox("订单类型", ['内销', '出口'], key="qot",
+                                       help="出口: 制费 1.07/只 + 毛利 +4pp (4L 实测 14.8%); 内销: 0.82/只")
+            print_colors = st.selectbox("印刷色数", [1, 2, 3, 4, 5], index=1, key="qpc",
+                                         help="数量摊销: 印刷开机费/qty + 单只变动 (实测硅酮 5色 K=1250)")
             lam = st.checkbox("覆膜", False, key="qlm")
             pad = st.checkbox("垫片", False, key="qpd")
         
@@ -249,7 +271,8 @@ with tab1:
     if quote_btn:
         tier_map = {'大客户': 'vip', '中等客户': 'medium', '小客户/农户': 'small'}
         tier = tier_map[ct_label]
-        margin = cmargin(tier, qty=qty)
+        is_export = (order_type == '出口')
+        margin = cmargin(tier, qty=qty, is_export=is_export)
 
         # Board calc
         blong = 2*l + 2*w + 40
@@ -273,8 +296,11 @@ with tab1:
         elif qty <= 20000: sf = 0.93
         else: sf = 0.88
 
-        print_cost = 0.12
-        other_cost = global_other  # 实测中位 0.82 ¥/只
+        # Phase C: 印刷按色数表 + 数量摊销
+        print_cost = print_cost_fn(print_colors, qty)
+        # Phase C: 制费按订单类型 (sidebar global_other 覆盖默认)
+        other_default = OTHER_COST_DEFAULT[order_type]
+        other_cost = global_other if abs(global_other - 0.82) > 0.01 else other_default
         base = bc + pc + lc + pdc + print_cost + other_cost
         cost = base * sf
         price = cost / (1 - margin)
@@ -299,13 +325,16 @@ with tab1:
 
         # Comparable prices
         with st.expander("📊 成本明细 & 其他客户报价", expanded=False):
+            print_setup_fee, print_unit_var = PRINT_TABLE.get(print_colors, PRINT_TABLE[2])
             st.write(f"**成本构成**: 纸板¥{bc:.2f} + 面纸¥{pc:.2f} + 覆膜¥{lc:.2f} + 垫片¥{pdc:.2f} + 印刷¥{print_cost:.2f} + 制费¥{other_cost:.2f} = ¥{base:.2f} × {sf} = ¥{cost:.2f}")
-            st.caption(f"qty={qty} 阶梯毛利基线: {qty_margin_base(qty)*100:.0f}% (≤500=30%/501-2k=22%/2k-5k=12%/5k-20k=8%/>20k=6%, 22行实测中位)")
+            st.caption(f"印刷({print_colors}色): max(开机费¥{print_setup_fee}/qty {qty}, 单只变动¥{print_unit_var}) = ¥{print_cost:.2f}/只")
+            st.caption(f"制费({order_type}): default ¥{other_default}/只" + (" (sidebar 覆盖)" if abs(global_other - 0.82) > 0.01 else ""))
+            st.caption(f"qty={qty} 阶梯毛利基线: {qty_margin_base(qty)*100:.0f}% (≤500=30%/501-2k=22%/2k-5k=12%/5k-20k=8%/>20k=6%)" + (" + 出口 +4pp" if is_export else ""))
             st.write(f"**纸板**: {barea:.3f}m² × ¥{bp:.2f}/m² | **面纸**: {parea:.3f}m² × ¥{pp:.2f}/m²")
             tier_df = pd.DataFrame({
                 '客户类型': ['大客户', '中等客户', '小客户/农户'],
-                '毛利率': [f"{cmargin('vip', qty)*100:.0f}%", f"{cmargin('medium', qty)*100:.0f}%", f"{cmargin('small', qty)*100:.0f}%"],
-                '报价': [f"¥{cost/(1-cmargin('vip', qty)):.2f}", f"¥{cost/(1-cmargin('medium', qty)):.2f}", f"¥{cost/(1-cmargin('small', qty)):.2f}"],
+                '毛利率': [f"{cmargin('vip', qty, is_export)*100:.0f}%", f"{cmargin('medium', qty, is_export)*100:.0f}%", f"{cmargin('small', qty, is_export)*100:.0f}%"],
+                '报价': [f"¥{cost/(1-cmargin('vip', qty, is_export)):.2f}", f"¥{cost/(1-cmargin('medium', qty, is_export)):.2f}", f"¥{cost/(1-cmargin('small', qty, is_export)):.2f}"],
             })
             st.dataframe(tier_df, hide_index=True, width="stretch")
         

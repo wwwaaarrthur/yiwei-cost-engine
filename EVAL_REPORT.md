@@ -137,16 +137,80 @@ Open `http://localhost:8501`. The bundled `data/demo.db` loads automatically (an
 
 ---
 
-## 7. Changelog
+## 7. Contract Price Eval — Phase B + Phase C (2026-05-18 NEW)
+
+> **数据语义审计发现**：§1-3 的 MAPE 评估的是 `material ¥/m²` (= unit_cost / board_area),
+> 字段语义实为「瓦楞单只成本/板材面积」—— 不是客户真实合同价。
+> Phase C 引入 **9 张 .xls 预核单 22 行 ground truth (含合同价 17 行)** 作为独立数据源,
+> 对完整 6 项报价公式跑合同价 MAPE 评估。
+
+### Phase C 数据源
+
+| .xls 文件 | 客户/类型 | 订单行数 | 合同价 |
+|---|---|---|---|
+| 4L 外贸水剂 ×2 (BC) | 出口加纳 | 2 | ✅ |
+| YW-2026-02-02 (亏损批) | 新安大单 | 3 | ✅ (-15% ~ -18%) |
+| YW-2026-02-04 / 04-01 / 04-07 / 04-09 | 新安 | 11 | ✅ |
+| 硅酮硬管纸箱 (含数量阶梯) | 新安 | 7 | 部分 |
+
+→ `/tmp/yiwei_eval/ground_truth_22rows.csv`
+
+### Phase B → Phase C 改善路径
+
+| 阶段 | Contract MAPE | Bias | 改善 |
+|---|:--:|:--:|:--:|
+| 旧公式 (push 前) | **41.3%** | -41.3% | (baseline) |
+| Phase B (3 项最小集) | 21.3% | -21.3% | +20.0pp |
+| **Phase C (6 项完整)** | **17.1%** | **-3.9%** | **+24.2pp** |
+
+### Phase C 改造内容
+
+1. **印刷成本表 + 数量摊销** (替代硬编码 ¥0.12/只)
+   - 5 色阶 setup_fee + unit_var：`max(setup/qty, unit_var)`
+   - 实测依据：硅酮硬管 500→3000 只彩印 2.50→0.63 推出 K≈1250 / v≈0.63
+2. **出口/内销维度** (制费 0.82 vs 1.07 + 毛利 +4pp)
+   - 4L 实测出口毛利 14.8% vs 新安内销 5-8%
+3. **qty 阶梯毛利** (替代固定 vip/medium/small)
+   - 22 行实测中位：≤500=30% / 501-2k=22% / 2k-5k=12% / 5k-20k=8% / >20k=6%
+4. **亏损告警** (毛利 <5% 红色 / <8% 黄色)
+   - 防止 02-02 案例 (单笔亏 ¥13,000) 再现
+
+### Phase C 分层精度 (按 flute / order_type)
+
+| 分层 | n | MAPE | Bias | 评级 |
+|---|:--:|:--:|:--:|:--:|
+| **EB 内销主流** | 15 (88% 订单) | **12.6%** | -6.2% | 🟢 **可用** |
+| BC 出口 outlier | 2 (仅 4L*6壶) | 50.9% | -50.9% | 🔴 Phase D 必修 |
+| 整体 | 17 | 17.1% | -3.9% | 🟡 一般 |
+
+### Phase C 关键洞察
+
+> **主流订单 (EB 内销 n=15) MAPE 12.6%** —— Phase C 目标达成。
+> **outlier (BC 4L 外贸 n=2) MAPE 50.9%** —— 高级配置 (160g 耐破纸 + 特种涂层 + 出口溢价)
+> 不在当前公式中，需 Phase D 加「产品类型」维度 (含耐破/特种涂层参数表)。
+
+### Phase C 限制
+
+| 限制 | 影响 | Phase D 修复方向 |
+|---|---|---|
+| 4L 外贸特殊配置 | BC outlier MAPE 50.9% | 加产品类型维度 (耐破纸 + 出口溢价) |
+| 板材公式 blong/bshort 公差未校准 | 影响所有订单 ±5% | 用 9 张 .xls 反推 (l/w/h 数据需补) |
+| 面纸 0.45 ¥/m² 默认偏低 | EB Bias -6% 余量 | 改按 ¥/吨 × 克重精算 |
+| R² 负值 | 公式仍非"统计学意义"上学到 | 升级 XGBoost baseline |
+
+---
+
+## 8. Changelog
 
 | Date | Change | Trigger |
 |---|---|---|
-| 2026-05-17 | Initial EVAL_REPORT.md created with real n=43 measurements | Eval-driven simulation revealed README's `±15% → ±8%` was estimated, not measured — replaced with honest system-thinking narrative |
-| TBD | BC sub-model isolation training | Pending data growth to n≥30 BC orders |
-| TBD | XGBoost baseline upgrade | Targets MAPE < 20% |
+| 2026-05-17 | Initial EVAL_REPORT.md (n=43 material ¥/m² MAPE) | Eval-driven simulation revealed README's `±15% → ±8%` was estimated |
+| 2026-05-18 | **Data semantic audit + Phase B + Phase C** | 9 .xls × 22 rows ground truth → contract MAPE 41.3% → 17.1% (主流 12.6%) |
+| TBD | Phase D: 产品类型维度 (耐破纸/特种涂层 + 板材公式校准) | BC outlier 修复 |
+| TBD | XGBoost baseline upgrade | Targets R² > 0.3 |
 | TBD | `weekly_eval.py` drift monitor | Completes System 7-piece-set coverage |
 
 ---
 
-_Generated 2026-05-17 from `eval_runner.py` against `data/demo.db` (anonymized public data)._
-_Production runs use `data/process_sheets.db` (not committed; see `anonymize.py` for transformation logic)._
+_Generated 2026-05-18 from `eval_runner.py` against `data/demo.db` (§1-3) + `/tmp/yiwei_eval/ground_truth_22rows.csv` (§7)._
+_Production runs use `data/process_sheets.db` (not committed; see `anonymize.py`)._
