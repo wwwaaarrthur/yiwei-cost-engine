@@ -10,9 +10,22 @@ from datetime import datetime
 import re, numpy as np
 
 # DB 路径策略：本地有生产数据库则用真实数据；公开部署（Streamlit Cloud）fallback 到 anonymized demo.db
-_DB_PROD = "data/process_sheets.db"
-_DB_DEMO = "data/demo.db"
+# 使用绝对路径避免 Streamlit Cloud 工作目录不确定导致 sqlite3 静默创建空文件
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_DB_PROD = os.path.join(_HERE, "data", "process_sheets.db")
+_DB_DEMO = os.path.join(_HERE, "data", "demo.db")
 DB = _DB_PROD if os.path.exists(_DB_PROD) else _DB_DEMO
+
+# 提前校验：若 DB 文件确实不存在则报清晰错误（含 debug 信息），避免 sqlite3 创建空文件后才在 pandas 报错
+if not os.path.exists(DB):
+    raise FileNotFoundError(
+        f"Database file not found: {DB}\n"
+        f"  HERE={_HERE}\n"
+        f"  CWD={os.getcwd()}\n"
+        f"  DB_PROD exists: {os.path.exists(_DB_PROD)}\n"
+        f"  DB_DEMO exists: {os.path.exists(_DB_DEMO)}\n"
+        f"Hint: ensure data/demo.db is committed (it should NOT be in .gitignore)"
+    )
 
 st.set_page_config(page_title="毅伟包装", page_icon="📦", layout="wide")
 
