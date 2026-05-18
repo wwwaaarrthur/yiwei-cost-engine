@@ -165,7 +165,7 @@ def cn(df, cols):
     return df[[CN.get(c, c) for c in cols if CN.get(c, c) in df.columns]]
 
 # ====== Tabs ======
-tab1, tab2, tab3 = st.tabs(["🏠 首页报价", "🔍 订单查找", "⚙️ 高级分析"])
+tab1, tab2, tab3, tab4 = st.tabs(["🏠 首页报价", "🔍 订单查找", "⚙️ 高级分析", "🤖 AI 咨询师"])
 
 # ========================
 # TAB 1: 快速报价
@@ -523,6 +523,158 @@ with tab3:
         
         if st.button("📥 导出全部(CSV)"):
             st.download_button("下载", fd.to_csv(index=False), "yiwei_all.csv", "text/csv")
+
+# ============================================================================
+# Tab 4: 🤖 AI 咨询师 — Multi-Agent 协作报价分析
+# ============================================================================
+with tab4:
+    st.header("🤖 AI 咨询师 · Multi-Agent 协作")
+    st.caption("3 角色协作（情报 → 分析 → 审查）+ 跨 provider 降级链 · 详见 [agents/README.md](https://github.com/wwwaaarrthur/yiwei-cost-engine/blob/main/agents/README.md)")
+
+    # ---- Sidebar: LLM mode toggle ----
+    with st.sidebar.expander("🤖 AI 咨询师配置", expanded=False):
+        use_real_llm = st.toggle("启用真实 Claude API 调用", value=False,
+                                  help="需在 Streamlit Secrets 配置 ANTHROPIC_API_KEY，否则默认 Mock 模式")
+        st.caption("Mock 模式：基于历史数据的启发式推荐，0 API 成本。Real 模式：调用 Claude API。")
+
+    # ---- Demo queries ----
+    st.markdown("**💡 演示问题**（点击快速填入）")
+    demo_cols = st.columns(3)
+    demo_queries = [
+        "1L*12 瓶水剂出口纸箱，BC 瓦防水的，怎么报价？",
+        "4kg 农化颗粒剂包装，EB 瓦，月用量 2 万只，给个区间报价",
+        "新客户询价 3L 桔子箱，没有历史订单，怎么办？",
+    ]
+    if "advisor_query" not in st.session_state:
+        st.session_state["advisor_query"] = ""
+    for i, dq in enumerate(demo_queries):
+        with demo_cols[i]:
+            if st.button(f"📝 示例 {i+1}", key=f"demo_{i}", help=dq):
+                st.session_state["advisor_query"] = dq
+
+    # ---- Input ----
+    user_query = st.text_area(
+        "你的问题",
+        value=st.session_state.get("advisor_query", ""),
+        placeholder="例：1L*12 瓶水剂出口纸箱，BC 瓦防水的，怎么报价？",
+        height=80,
+    )
+
+    flute_col, btn_col = st.columns([1, 2])
+    with flute_col:
+        flute_hint = st.selectbox("瓦型提示（可选）", ["自动识别", "BC", "EB", "BE", "单E"])
+    with btn_col:
+        st.write("")
+        run_advisor = st.button("🚀 运行 Multi-Agent 分析", type="primary", width="stretch")
+
+    # ---- Run pipeline ----
+    if run_advisor and user_query.strip():
+        try:
+            from agents import AdvisorOrchestrator
+            # API key from secrets (only if user toggled real mode)
+            api_key = None
+            if use_real_llm:
+                try:
+                    api_key = st.secrets.get("ANTHROPIC_API_KEY", None)
+                except Exception:
+                    api_key = None
+                if not api_key:
+                    st.warning("⚠️ 未在 Streamlit Secrets 配置 ANTHROPIC_API_KEY，自动降级到 Mock 模式")
+
+            orch = AdvisorOrchestrator(
+                use_llm=use_real_llm and bool(api_key),
+                api_key=api_key,
+            )
+
+            with st.spinner("3 Agent 协作中..."):
+                result = orch.advise(
+                    user_query.strip(),
+                    flute_hint=None if flute_hint == "自动识别" else flute_hint,
+                )
+
+            # ---- Timeline ----
+            t = result.get("timestamps", {})
+            st.markdown(
+                f"⏱️ **总耗时**: {result.get('total_ms', 0)} ms "
+                f"(情报 {t.get('intelligence_ms', 0)} ms · 分析 {t.get('analysis_ms', 0)} ms · 审查 {t.get('critic_ms', 0)} ms)"
+            )
+
+            # ---- Final recommendation ----
+            final = result["final_recommendation"]
+            v = final["verdict"]
+            if v == "approve":
+                st.success(f"✅ **{final['message_to_user']}**")
+            elif v == "revise":
+                st.warning(f"⚠️ **{final['message_to_user']}**")
+            else:
+                st.error(f"🛑 **{final['message_to_user']}**")
+
+            # Confidence bar
+            st.progress(final["confidence"], text=f"Critic Agent 置信度: {final['confidence']:.0%}")
+
+            # ---- Agent collaboration details ----
+            st.markdown("### 🔍 3 Agent 协作过程")
+            agent_tabs = st.tabs(["🔎 情报 Agent", "🧠 分析 Agent", "⚖️ 审查 Agent"])
+
+            with agent_tabs[0]:
+                intel = result["intelligence"]
+                st.write(f"**关键词提取**: {intel.get('keywords_extracted', [])}")
+                st.write(f"**瓦型过滤**: {intel.get('flute_filter') or '（无）'}")
+                st.metric("匹配历史订单", intel.get("n_matches", 0))
+                pr = intel.get("price_range", {})
+                pcols = st.columns(3)
+                pcols[0].metric("p25", f"¥{pr.get('p25', 'N/A')}/m²")
+                pcols[1].metric("p50（中位）", f"¥{pr.get('p50', 'N/A')}/m²")
+                pcols[2].metric("p75", f"¥{pr.get('p75', 'N/A')}/m²")
+                if intel.get("warnings"):
+                    st.markdown("**⚠️ 警告**")
+                    for w in intel["warnings"]:
+                        st.warning(w)
+                if intel.get("similar_orders"):
+                    st.markdown("**前 5 条相似订单**")
+                    st.dataframe(pd.DataFrame(intel["similar_orders"][:5]), width="stretch")
+
+            with agent_tabs[1]:
+                ana = result["analysis"]
+                st.write(f"**模式**: `{ana.get('mode', 'unknown')}`")
+                if ana.get("notice"):
+                    st.info(ana["notice"])
+                if ana.get("recommended_price_per_m2") is not None:
+                    st.metric("建议单价", f"¥{ana['recommended_price_per_m2']}/m²")
+                st.markdown("**假设**")
+                for a in ana.get("assumptions", []):
+                    st.write(f"- {a}")
+                st.markdown("**推理**")
+                st.write(ana.get("rationale", "（无）"))
+                st.markdown("**Trade-offs**")
+                for t in ana.get("trade_offs", []):
+                    st.write(f"- {t}")
+                st.markdown("**风险**")
+                for r in ana.get("risks", []):
+                    sev = r.get("severity", "low")
+                    icon = {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(sev, "⚪")
+                    st.write(f"{icon} **{r.get('risk')}** — _Mitigation_: {r.get('mitigation')}")
+
+            with agent_tabs[2]:
+                crit = result["critic"]
+                vd = crit.get("verdict", "unknown")
+                st.write(f"**Verdict**: `{vd}` (mode: `{crit.get('mode', 'mock')}`)")
+                st.write(f"**Confidence**: {crit.get('confidence', 0):.0%}")
+                if crit.get("issues"):
+                    st.markdown("**审查发现**")
+                    for i in crit["issues"]:
+                        sev = i.get("severity", "low")
+                        icon = {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(sev, "⚪")
+                        st.write(f"{icon} **{i.get('type', '?')}** — {i.get('detail', '')}")
+                else:
+                    st.success("✅ 4 个维度审查全通过：sanity bounds / citation integrity / risk coverage / trade-off honesty")
+
+        except Exception as e:
+            st.error(f"🛑 Multi-Agent 流程失败：{type(e).__name__}: {e}")
+            st.caption("这本身是 system 思维的证据 — 失败应该可见，不应该静默")
+
+    elif run_advisor and not user_query.strip():
+        st.warning("请输入问题或点击演示按钮填入示例")
 
 # Footer
 st.sidebar.markdown("## 📊 毅伟包装成本系统")

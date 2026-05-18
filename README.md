@@ -26,6 +26,15 @@ A cost-prediction baseline trained on **2,086 historical work orders** (extracte
 
 > The point is not to claim a specific accuracy number — it is to build the **eval scaffolding** that makes model iteration safe, auditable, and decision-grounded. Honest measurement and trade-off articulation matter more than headline metrics.
 
+## What's Inside
+
+| Component | What it demonstrates |
+|---|---|
+| **5-module eval pipeline** (`eval_runner.py`) | AI Quality Assurance system thinking — Loader / Predictor / Metrics / Breakdown / Regression. See [EVAL_REPORT.md](EVAL_REPORT.md). |
+| **Multi-Agent advisor** (`agents/`) | 3-role collaboration (Intelligence → Analysis → Critic) with mock-first design and graceful LLM degradation. See [agents/README.md](agents/README.md). |
+| **Privacy-by-design anonymization** (`anonymize.py`) | 4-layer mapping (CLIENT / SUPPLIER / BRAND / SENSITIVE_TOKENS) + `--verify` subcommand + JSON mapping isolation (gitignored). |
+| **Streamlit web app** (`app.py`) | 3 main tabs + 5 sub-tabs + a Multi-Agent advisor tab — covers the full operator workflow. |
+
 ## Architecture
 
 ```
