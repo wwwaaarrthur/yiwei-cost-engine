@@ -151,7 +151,20 @@ def ctier(c):
     if c in ['大型农化客户A', '大型农化客户B', '大型农化客户A-HK']: return 'vip'
     if any(k in c for k in ['制造企业客户', '物流企业客户', '外贸企业客户', '连锁零售客户', '香港企业客户']): return 'medium'
     return 'small'
-def cmargin(t): return {'vip': 0.10, 'medium': 0.14, 'small': 0.18}[t]
+
+def qty_margin_base(qty):
+    # qty 阶梯基线毛利 (22 行 .xls ground truth 实测中位)
+    if qty <= 500: return 0.30
+    if qty <= 2000: return 0.22
+    if qty <= 5000: return 0.12
+    if qty <= 20000: return 0.08
+    return 0.06
+
+def cmargin(t, qty=None):
+    if qty is None:
+        return {'vip': 0.10, 'medium': 0.14, 'small': 0.18}[t]
+    adj = {'vip': -0.02, 'medium': 0.0, 'small': +0.03}[t]
+    return max(0.03, qty_margin_base(qty) + adj)
 
 CN = {
     'client': '客户', 'product': '产品', 'order_qty': '数量', 'order_date': '日期',
@@ -225,13 +238,19 @@ with tab1:
                 global_pp = st.number_input("面纸 ¥/m²", 0.1, 5.0, 0.45, 0.05, key="global_pp")
             with rc4:
                 global_lam = st.number_input("覆膜费 ¥/只", 0.0, 2.0, 0.25, 0.05, key="global_lam")
+            rc5, _ = st.columns(2)
+            with rc5:
+                global_other = st.number_input(
+                    "其他制费 ¥/只", 0.3, 2.0, 0.82, 0.05, key="global_other",
+                    help="后勤工资+房租+税收+工艺工资+胶水+运费 (实测中位 0.82, 出口 1.07)"
+                )
     
     # Quote logic
     if quote_btn:
         tier_map = {'大客户': 'vip', '中等客户': 'medium', '小客户/农户': 'small'}
         tier = tier_map[ct_label]
-        margin = cmargin(tier)
-        
+        margin = cmargin(tier, qty=qty)
+
         # Board calc
         blong = 2*l + 2*w + 40
         bshort = 2*h + 2*w + 20  # 双拼
@@ -239,7 +258,7 @@ with tab1:
         paper_long = 2*l + 2*w + 50
         paper_short = h + w + 20
         parea = paper_long * paper_short / 1_000_000
-        
+
         # Cost
         bp = fcb.get(ft, 1.5)
         pp = global_pp
@@ -247,22 +266,29 @@ with tab1:
         pc = parea * pp
         lc = global_lam if lam else 0
         pdc = 0.15 if pad else 0
-        
+
         if qty <= 500: sf = 1.15
         elif qty <= 2000: sf = 1.05
         elif qty <= 5000: sf = 1.0
         elif qty <= 20000: sf = 0.93
         else: sf = 0.88
-        
+
         print_cost = 0.12
-        base = bc + pc + lc + pdc + print_cost
+        other_cost = global_other  # 实测中位 0.82 ¥/只
+        base = bc + pc + lc + pdc + print_cost + other_cost
         cost = base * sf
         price = cost / (1 - margin)
         mp = margin * 100
         
         st.divider()
         st.subheader("💰 报价结果")
-        
+
+        # 亏损/低毛利告警 (基于 02-02 案例 -15.9% 教训)
+        if mp < 5:
+            st.error(f"🔴 当前毛利率 {mp:.1f}% < 5% — 接近亏损！历史教训: 2026-02-02 新安 19659 只大单实际 -15.9%, 单笔亏 ¥13,000")
+        elif mp < 8:
+            st.warning(f"🟡 毛利率 {mp:.1f}% 偏薄 — 建议复核同客户同尺寸历史均值")
+
         r1, r2, r3 = st.columns(3)
         with r1:
             st.metric("单只成本", f"¥{cost:.2f}")
@@ -270,15 +296,16 @@ with tab1:
             st.metric("建议报价", f"¥{price:.2f}", delta=f"毛利¥{price-cost:.2f} ({mp:.0f}%)")
         with r3:
             st.metric("纸板尺寸", f"{blong}×{bshort}mm")
-        
+
         # Comparable prices
         with st.expander("📊 成本明细 & 其他客户报价", expanded=False):
-            st.write(f"**成本构成**: 纸板¥{bc:.2f} + 面纸¥{pc:.2f} + 覆膜¥{lc:.2f} + 垫片¥{pdc:.2f} + 印刷¥{print_cost:.2f} = ¥{base:.2f} × {sf} = ¥{cost:.2f}")
+            st.write(f"**成本构成**: 纸板¥{bc:.2f} + 面纸¥{pc:.2f} + 覆膜¥{lc:.2f} + 垫片¥{pdc:.2f} + 印刷¥{print_cost:.2f} + 制费¥{other_cost:.2f} = ¥{base:.2f} × {sf} = ¥{cost:.2f}")
+            st.caption(f"qty={qty} 阶梯毛利基线: {qty_margin_base(qty)*100:.0f}% (≤500=30%/501-2k=22%/2k-5k=12%/5k-20k=8%/>20k=6%, 22行实测中位)")
             st.write(f"**纸板**: {barea:.3f}m² × ¥{bp:.2f}/m² | **面纸**: {parea:.3f}m² × ¥{pp:.2f}/m²")
             tier_df = pd.DataFrame({
                 '客户类型': ['大客户', '中等客户', '小客户/农户'],
-                '毛利率': ['10%', '14%', '18%'],
-                '报价': [f"¥{cost/0.90:.2f}", f"¥{cost/0.86:.2f}", f"¥{cost/0.82:.2f}"],
+                '毛利率': [f"{cmargin('vip', qty)*100:.0f}%", f"{cmargin('medium', qty)*100:.0f}%", f"{cmargin('small', qty)*100:.0f}%"],
+                '报价': [f"¥{cost/(1-cmargin('vip', qty)):.2f}", f"¥{cost/(1-cmargin('medium', qty)):.2f}", f"¥{cost/(1-cmargin('small', qty)):.2f}"],
             })
             st.dataframe(tier_df, hide_index=True, width="stretch")
         

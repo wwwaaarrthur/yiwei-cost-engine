@@ -45,3 +45,4 @@ anonymize_mapping.json
 # Database backups (may contain pre-anonymization data)
 *.db.bak-*
 data/*.db.bak-*
+*.bak-*
