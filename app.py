@@ -184,6 +184,16 @@ def print_cost_fn(colors, qty):
 # 制费默认值 (实测中位)
 OTHER_COST_DEFAULT = {'内销': 0.82, '出口': 1.07}
 
+# Phase D5: 板材切割方式 (基于 2039 单 demo.db 反推)
+# 实测 tab_w 中位 40mm (与默认一致), flap_w 中位 12mm (vs 旧默认 20mm 偏高)
+# 占比 (n=2039): 双拼×双拼 46.5% / 单件 33% / 四联板 15.5% / 倒单页 5%
+BOARD_CUTTING_MODES = {
+    '双拼×双拼 (RSC 标准 46.5%)': lambda l, w, h, tab, flap: (2*l + 2*w + tab, 2*h + 2*w + flap),
+    '双拼×单拼 (四联板 15.5%)':   lambda l, w, h, tab, flap: (2*l + 2*w + tab, h + w + flap),
+    '单拼×双拼 (倒单页 5%)':      lambda l, w, h, tab, flap: (l + w + tab, 2*h + 2*w + flap),
+    '单拼×单拼 (单件板 33%)':     lambda l, w, h, tab, flap: (l + w + tab, h + w + flap),
+}
+
 CN = {
     'client': '客户', 'product': '产品', 'order_qty': '数量', 'order_date': '日期',
     'box_l': '长', 'box_w': '宽', 'box_h': '高', 'flute_normalized': '瓦型',
@@ -218,6 +228,10 @@ with tab1:
             ct_label = st.selectbox("客户类型", ['大客户', '中等客户', '小客户/农户'], key="qc")
             order_type = st.selectbox("订单类型", ['内销', '出口'], key="qot",
                                        help="出口: 制费 1.07/只 + 毛利 +4pp (4L 实测 14.8%); 内销: 0.82/只")
+            cutting_mode = st.selectbox(
+                "切割方式", list(BOARD_CUTTING_MODES.keys()), index=0, key="qcm",
+                help="基于 2039 单 demo.db 反推: 46.5% 双拼×双拼 (主力 1L*12瓶 RSC)/33% 单件/15.5% 四联板/5% 倒单页. 选错会让板面积错 60-290%"
+            )
             print_colors = st.selectbox("印刷色数", [1, 2, 3, 4, 5], index=1, key="qpc",
                                          help="数量摊销: 印刷开机费/qty + 单只变动 (实测硅酮 5色 K=1250)")
             lam = st.checkbox("覆膜", False, key="qlm")
@@ -285,9 +299,11 @@ with tab1:
         is_export = (order_type == '出口')
         margin = cmargin(tier, qty=qty, is_export=is_export)
 
-        # Board calc
-        blong = 2*l + 2*w + 40
-        bshort = 2*h + 2*w + 20  # 双拼
+        # Phase D5: 按切割方式分支 (基于 2039 单反推: tab_w=40, flap_w=12 实测中位)
+        TAB_W = 40
+        FLAP_W = 12  # 旧默认 20, 改为 2039 单实测中位 12
+        cut_fn = BOARD_CUTTING_MODES[cutting_mode]
+        blong, bshort = cut_fn(l, w, h, TAB_W, FLAP_W)
         barea = blong * bshort / 1_000_000
         paper_long = 2*l + 2*w + 50
         paper_short = h + w + 20
@@ -338,6 +354,7 @@ with tab1:
         with st.expander("📊 成本明细 & 其他客户报价", expanded=False):
             print_setup_fee, print_unit_var = PRINT_TABLE.get(print_colors, PRINT_TABLE[2])
             st.write(f"**成本构成**: 纸板¥{bc:.2f} + 面纸¥{pc:.2f} + 覆膜¥{lc:.2f} + 垫片¥{pdc:.2f} + 印刷¥{print_cost:.2f} + 制费¥{other_cost:.2f} = ¥{base:.2f} × {sf} = ¥{cost:.2f}")
+            st.caption(f"切割方式: {cutting_mode} → 纸板 {blong}×{bshort}mm = {barea:.3f}m² (tab=40 flap=12 实测中位)")
             st.caption(f"印刷({print_colors}色): max(开机费¥{print_setup_fee}/qty {qty}, 单只变动¥{print_unit_var}) = ¥{print_cost:.2f}/只")
             st.caption(f"制费({order_type}): default ¥{other_default}/只" + (" (sidebar 覆盖)" if abs(global_other - 0.82) > 0.01 else ""))
             st.caption(f"qty={qty} 阶梯毛利基线: {qty_margin_base(qty)*100:.0f}% (≤500=30%/501-2k=22%/2k-5k=12%/5k-20k=8%/>20k=6%)" + (" + 出口 +4pp" if is_export else ""))
