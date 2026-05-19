@@ -164,13 +164,14 @@ python3 eval_runner.py    # Step 7 应输出 合同价 MAPE 17.1%
 
 **私有源数据**：原 9 张 .xls 预核单 + 含真实客户/品牌名的 ground truth 留私有 (`/tmp/yiwei_eval/` 或 `data/process_sheets.db`，未在 git 中)。脱敏映射见 [`anonymize_mapping.example.json`](anonymize_mapping.example.json) 公开模板 + 本地私有 `anonymize_mapping.json` (gitignored)。csv 脱敏脚本：[`anonymize_csv.py`](anonymize_csv.py)。
 
-### Phase B → Phase C 改善路径
+### Phase B → C → D1 改善路径
 
-| 阶段 | Contract MAPE | Bias | 改善 |
-|---|:--:|:--:|:--:|
-| 旧公式 (push 前) | **41.3%** | -41.3% | (baseline) |
-| Phase B (3 项最小集) | 21.3% | -21.3% | +20.0pp |
-| **Phase C (6 项完整)** | **17.1%** | **-3.9%** | **+24.2pp** |
+| 阶段 | Contract MAPE | Bias | EB 内销主流 (n=15) | 改善 |
+|---|:--:|:--:|:--:|:--:|
+| 旧公式 (push 前) | **41.3%** | -41.3% | n/a | (baseline) |
+| Phase B (3 项最小集) | 21.3% | -21.3% | n/a | +20.0pp |
+| Phase C (6 项完整) | 17.1% | -3.9% | 12.6% | +24.2pp |
+| **Phase D1 (面纸精算)** | **14.5%** 🟢 | **-1.9%** | **9.9%** 🟢 | **+26.8pp** |
 
 ### Phase C 改造内容
 
@@ -192,20 +193,38 @@ python3 eval_runner.py    # Step 7 应输出 合同价 MAPE 17.1%
 | BC 出口 outlier | 2 (仅 4L*6壶) | 50.9% | -50.9% | 🔴 Phase D 必修 |
 | 整体 | 17 | 17.1% | -3.9% | 🟡 一般 |
 
-### Phase C 关键洞察
+### Phase D1 分层精度 (面纸精算后)
 
-> **主流订单 (EB 内销 n=15) MAPE 12.6%** —— Phase C 目标达成。
-> **outlier (BC 4L 外贸 n=2) MAPE 50.9%** —— 高级配置 (160g 耐破纸 + 特种涂层 + 出口溢价)
-> 不在当前公式中，需 Phase D 加「产品类型」维度 (含耐破/特种涂层参数表)。
+| 分层 | n | MAPE | Bias | 评级 |
+|---|:--:|:--:|:--:|:--:|
+| **EB 内销主流** | 15 | **9.9%** | +2.1% | 🟢 **工业级** (< 10%) |
+| BC 出口 outlier | 2 | 48.9% | -48.9% | 🔴 Phase D2 待修 (产品配置维度) |
+| 整体 | 17 | **14.5%** | -1.9% | 🟢 **可用** (< 15%) |
 
-### Phase C 限制
+### Phase D1 改造内容
 
-| 限制 | 影响 | Phase D 修复方向 |
+**面纸成本精算** (替代 0.45 ¥/m² 硬编码)：
+- 旧公式：`pc = parea × 0.45 ¥/m²`（经验估算）
+- 新公式：`pc = parea × (克重 g/m² × 单价 ¥/吨) / 1_000_000`
+- 实测：250 g/m² × 3410 ¥/吨 / 10⁶ = **0.853 ¥/m²** (vs 旧 0.45，偏低 89%)
+- 行业惯例：化工/制造业 ERP 用 "吨价 × 单只克重" 精算白板成本
+- UI 改造：sidebar 1 个 `¥/m²` 参数 → 拆成 2 个参数（克重 + 吨价）+ 派生 ¥/m² 提示
+
+### Phase C/D1 关键洞察
+
+> **Phase C**: 主流订单 (EB 内销 n=15) MAPE 12.6% —— 6 项拆解 + qty 阶梯生效。
+> **Phase D1**: 面纸精算后 EB 内销 **MAPE 9.9%** —— 工业级 (< 10%)。Bias 翻转 -6.2% → +2.1% 接近无偏，公式收敛。
+> **BC outlier 仍 48.9%** —— 4L 高级配置 (160g 耐破纸 + 特种涂层 + 出口溢价) 仍需 Phase D2 加产品配置维度。
+
+### Phase D1 后剩余限制
+
+| 限制 | 影响 | Phase D2-6 修复方向 |
 |---|---|---|
-| 4L 外贸特殊配置 | BC outlier MAPE 50.9% | 加产品类型维度 (耐破纸 + 出口溢价) |
-| 板材公式 blong/bshort 公差未校准 | 影响所有订单 ±5% | 用 9 张 .xls 反推 (l/w/h 数据需补) |
-| 面纸 0.45 ¥/m² 默认偏低 | EB Bias -6% 余量 | 改按 ¥/吨 × 克重精算 |
-| R² 负值 | 公式仍非"统计学意义"上学到 | 升级 XGBoost baseline |
+| 4L 外贸特殊配置 | BC outlier MAPE 48.9% | **Phase D2**: 加产品配置维度 (160g 耐破纸 + 特种涂层 + 出口溢价) |
+| 板材公式 blong/bshort 公差未校准 | 影响所有订单 ±5% | **Phase D5**: 用 9 张 .xls 反推 (l/w/h 数据需业务补) |
+| ~~面纸 0.45 ¥/m² 默认偏低~~ ✅ | ✅ Phase D1 已修 | (完成) |
+| R² 仍 -0.72 | 公式仍非"统计学意义"上学到 | **Phase D6**: XGBoost baseline (Targets R² > 0.3) |
+| 无 drift monitor | eval 仍需手动 | **Phase D4**: weekly_eval.py 定时任务 |
 
 ---
 
@@ -215,9 +234,10 @@ python3 eval_runner.py    # Step 7 应输出 合同价 MAPE 17.1%
 |---|---|---|
 | 2026-05-17 | Initial EVAL_REPORT.md (n=43 material ¥/m² MAPE) | Eval-driven simulation revealed README's `±15% → ±8%` was estimated |
 | 2026-05-18 | **Data semantic audit + Phase B + Phase C** | 9 .xls × 22 rows ground truth → contract MAPE 41.3% → 17.1% (主流 12.6%) |
-| TBD | Phase D: 产品类型维度 (耐破纸/特种涂层 + 板材公式校准) | BC outlier 修复 |
-| TBD | XGBoost baseline upgrade | Targets R² > 0.3 |
-| TBD | `weekly_eval.py` drift monitor | Completes System 7-piece-set coverage |
+| 2026-05-18 | **Phase D1 面纸精算 (克重 × ¥/吨)** | 17.1% → **14.5%** (主流 9.9% 🟢 工业级)，越过 < 15% 可用阈值 |
+| TBD | Phase D2: BC outlier 产品配置维度 (160g 耐破 + 涂层) | BC outlier 修复 |
+| TBD | Phase D4: `weekly_eval.py` drift monitor | Completes System 7-piece-set coverage |
+| TBD | Phase D6: XGBoost baseline upgrade | Targets R² > 0.3 |
 
 ---
 

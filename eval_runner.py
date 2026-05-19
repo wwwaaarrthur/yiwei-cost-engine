@@ -151,7 +151,11 @@ def predict_cost_full(record, params):
     })
     bp = fcb.get(flute, 1.5)
     bc = area * bp                              # 瓦楞 (fcb 学习)
-    pc = area * 0.6 * 0.45                      # 面纸 (默认 0.45 ¥/m² × 60%)
+    # Phase D1: 面纸按克重 × ¥/吨 精算 (替代 0.45 ¥/m² 硬编码)
+    paper_gsm = params.get('paper_gsm', 250)
+    paper_per_tonne = params.get('paper_per_tonne', 3410)
+    paper_cpm = (paper_gsm * paper_per_tonne) / 1_000_000   # 实测 250×3410/1e6 = 0.853
+    pc = area * 0.6 * paper_cpm                 # 面纸 (60% 板材面积 × 实测 ¥/m²)
     lc = 0.25 if record.get('has_lam') else 0   # 覆膜 (default 0.25 ¥/只)
     pdc = 0.15 if record.get('has_pad') else 0  # 垫片 (default 0.15 ¥/只)
     # 印刷按色数表

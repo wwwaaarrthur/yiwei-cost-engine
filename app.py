@@ -257,15 +257,26 @@ with tab1:
             st.divider()
             rc3, rc4 = st.columns(2)
             with rc3:
-                global_pp = st.number_input("面纸 ¥/m²", 0.1, 5.0, 0.45, 0.05, key="global_pp")
+                global_paper_gsm = st.number_input(
+                    "白板克重 g/m²", 100, 500, 250, 10, key="global_paper_gsm",
+                    help="实测主流 250g 白板 (22 行 ground truth)"
+                )
             with rc4:
-                global_lam = st.number_input("覆膜费 ¥/只", 0.0, 2.0, 0.25, 0.05, key="global_lam")
-            rc5, _ = st.columns(2)
+                global_paper_per_tonne = st.number_input(
+                    "白板 ¥/吨", 2000, 6000, 3410, 50, key="global_paper_per_tonne",
+                    help="实测 3360-3460 ¥/吨 (鲸鲨/华天等品牌)"
+                )
+            rc5, rc6 = st.columns(2)
             with rc5:
+                global_lam = st.number_input("覆膜费 ¥/只", 0.0, 2.0, 0.25, 0.05, key="global_lam")
+            with rc6:
                 global_other = st.number_input(
                     "其他制费 ¥/只", 0.3, 2.0, 0.82, 0.05, key="global_other",
                     help="后勤工资+房租+税收+工艺工资+胶水+运费 (实测中位 0.82, 出口 1.07)"
                 )
+            # Phase D1: 白板 ¥/m² 从克重 × 吨价派生
+            global_pp = (global_paper_gsm * global_paper_per_tonne) / 1_000_000
+            st.caption(f"📐 白板 ¥/m² 派生: {global_paper_gsm}g/m² × ¥{global_paper_per_tonne}/吨 / 10⁶ = **¥{global_pp:.3f}/m²**")
     
     # Quote logic
     if quote_btn:
@@ -330,7 +341,7 @@ with tab1:
             st.caption(f"印刷({print_colors}色): max(开机费¥{print_setup_fee}/qty {qty}, 单只变动¥{print_unit_var}) = ¥{print_cost:.2f}/只")
             st.caption(f"制费({order_type}): default ¥{other_default}/只" + (" (sidebar 覆盖)" if abs(global_other - 0.82) > 0.01 else ""))
             st.caption(f"qty={qty} 阶梯毛利基线: {qty_margin_base(qty)*100:.0f}% (≤500=30%/501-2k=22%/2k-5k=12%/5k-20k=8%/>20k=6%)" + (" + 出口 +4pp" if is_export else ""))
-            st.write(f"**纸板**: {barea:.3f}m² × ¥{bp:.2f}/m² | **面纸**: {parea:.3f}m² × ¥{pp:.2f}/m²")
+            st.write(f"**纸板**: {barea:.3f}m² × ¥{bp:.2f}/m² | **面纸**: {parea:.3f}m² × ¥{pp:.3f}/m² ({global_paper_gsm}g × ¥{global_paper_per_tonne}/吨)")
             tier_df = pd.DataFrame({
                 '客户类型': ['大客户', '中等客户', '小客户/农户'],
                 '毛利率': [f"{cmargin('vip', qty, is_export)*100:.0f}%", f"{cmargin('medium', qty, is_export)*100:.0f}%", f"{cmargin('small', qty, is_export)*100:.0f}%"],
