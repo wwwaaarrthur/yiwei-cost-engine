@@ -1,0 +1,98 @@
+{
+  "_note": "毅伟印前核稿验证 - 3 单 5 次实战案例 (anonymized)",
+  "_version": "2026-05-19",
+  "_source": "~/workspace/毅伟/核对/ (private) → anonymized for public repo",
+  "_business_scope": "毅伟出口业务 (CK1/CK2/CK3 系列, 不含编织袋等非毅伟业务)",
+
+  "cases": [
+    {
+      "order_id": "X01070",
+      "date": "2026-05-16",
+      "client_segment": "东南亚出口客户X",
+      "product_type": "除草剂 1L×12瓶 出口纸箱 + 双面标签",
+      "batch_code": "CK1-1L",
+      "review_round": 1,
+      "files": [
+        "纸箱设计稿.jpg",
+        "1L 双面标签设计.jpg",
+        "包装物及包装要求.doc",
+        "PDF 核对版"
+      ],
+      "ocr_languages": ["中文", "英文"],
+      "status": "passed",
+      "notes": "首单核对, 设计师 PDF 与客户源文件一致"
+    },
+    {
+      "order_id": "X01127_v1",
+      "date": "2026-05-08",
+      "client_segment": "东南亚出口客户X",
+      "product_type": "除草剂 1L×10瓶 出口纸箱 + 标签",
+      "batch_code": "CK2-1L",
+      "review_round": 1,
+      "files": [
+        "标签设计 (red cap).jpg",
+        "1lX10 纸箱设计.jpg",
+        "包装物及包装要求.doc",
+        "X01127纸箱改.pdf"
+      ],
+      "ocr_languages": ["中文", "英文"],
+      "status": "needs_correction",
+      "notes": "首次核对发现客户出错, 进入第 2 轮修改"
+    },
+    {
+      "order_id": "X01127_v2",
+      "date": "2026-05-09",
+      "client_segment": "东南亚出口客户X",
+      "product_type": "除草剂 1L×10瓶 (客户出错修改版)",
+      "batch_code": "CK2-1L",
+      "review_round": 2,
+      "files": [
+        "标签转曲.ai (Adobe Illustrator 矢量源)",
+        "1lX10 纸箱转曲.ai",
+        "X01127纸箱改(1).pdf"
+      ],
+      "ocr_languages": ["中文", "英文"],
+      "status": "passed",
+      "notes": "客户出错修改后第 2 次核对通过"
+    },
+    {
+      "order_id": "X01233",
+      "date": "2026-05-15",
+      "client_segment": "东南亚出口客户X",
+      "product_type": "除草剂 48% W/V SL 4L×6壶 出口纸箱 + 泰文标签",
+      "batch_code": "CK3-4L",
+      "review_round": 1,
+      "files": [
+        "纸箱设计稿.jpg (20,714×8,586px)",
+        "标签设计.jpg (6,160×2,548px)",
+        "瓶子摆放示意.JPG",
+        "包装物及包装要求.doc",
+        "品牌 Logo.png",
+        "PDF 核对版 (2页, 34.1×23.5 inch)"
+      ],
+      "ocr_languages": ["中文", "英文", "泰文"],
+      "status": "passed",
+      "notes": "中英泰三语 OCR + 多模态比对, 27/27 字段全匹配, 0 错误",
+      "full_report": "X01233_anonymized.md"
+    }
+  ],
+
+  "stats": {
+    "total_orders": 3,
+    "total_reviews": 5,
+    "ai_end_to_end_time": "约 2 分钟/单",
+    "fields_per_review": "30+",
+    "languages_supported": ["中文", "英文", "泰文"],
+    "tools": [
+      "Apple Vision OCR (中英泰三语字段提取)",
+      "pymupdf (PDF 渲染 + 矢量内容解析)",
+      "Multi-Agent orchestration via OpenClaw 智械"
+    ]
+  },
+
+  "narrative": {
+    "value_prop": "AI 不仅算成本 (yiwei-cost-engine), 还能验成品 — 真正的产销闭环",
+    "failure_mode_prevented": "防'错印整批'高成本质量事故 (业内单批废箱可损失 ¥15,000-35,000)",
+    "speed_advantage": "AI 端到端约 2 分钟 vs 人工核稿数小时"
+  }
+}

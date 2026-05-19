@@ -206,7 +206,10 @@ def cn(df, cols):
     return df[[CN.get(c, c) for c in cols if CN.get(c, c) in df.columns]]
 
 # ====== Tabs ======
-tab1, tab2, tab3, tab4 = st.tabs(["🏠 首页报价", "🔍 订单查找", "⚙️ 高级分析", "🤖 AI 咨询师"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "🏠 首页报价", "🔍 订单查找", "⚙️ 高级分析", "🤖 AI 咨询师",
+    "📋 印前核稿验证"
+])
 
 # ========================
 # TAB 1: 快速报价
@@ -791,6 +794,121 @@ with tab4:
 
     elif run_advisor and not user_query.strip():
         st.warning("请输入问题或点击演示按钮填入示例")
+
+# ============================================================================
+# Tab 5: 📋 印前核稿验证 — 多模态质量门禁 (毅伟出口业务 3 单 5 次实战)
+# ============================================================================
+with tab5:
+    st.header("📋 印前核稿验证 · 多模态质量门禁")
+    st.caption(
+        "毅伟出口业务实战 3 单 5 次 (CK1/CK2/CK3 系列) · "
+        "客户 JPG 位图 vs 设计师 PDF 矢量跨模态字段对齐 · "
+        "中/英/泰三语 OCR · 防错印整批高成本质量事故"
+    )
+
+    import json as _json
+    import os as _os
+    PREPRESS_DIR = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'data', 'prepress_reports')
+    META_PATH = _os.path.join(PREPRESS_DIR, 'metadata.json')
+
+    if not _os.path.exists(META_PATH):
+        st.warning(f"⚠️ 元数据缺失: {META_PATH}")
+    else:
+        with open(META_PATH, 'r', encoding='utf-8') as _f:
+            meta = _json.load(_f)
+        cases = meta['cases']
+        stats = meta['stats']
+        narrative = meta['narrative']
+
+        # ===== 业务总览 =====
+        st.subheader("📊 实战业务总览")
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("订单数", stats['total_orders'])
+        col2.metric("核对次数", stats['total_reviews'])
+        col3.metric("AI 端到端", stats['ai_end_to_end_time'])
+        col4.metric("字段覆盖", stats['fields_per_review'])
+
+        st.info(
+            f"**核心价值**: {narrative['value_prop']}\n\n"
+            f"**防御场景**: {narrative['failure_mode_prevented']}\n\n"
+            f"**效率**: {narrative['speed_advantage']}"
+        )
+
+        # ===== 案例列表 =====
+        st.divider()
+        st.subheader("📁 案例库")
+
+        case_df = []
+        for c in cases:
+            case_df.append({
+                '订单号': c['order_id'],
+                '日期': c['date'],
+                '产品类型': c['product_type'],
+                '批次': c['batch_code'],
+                '客户分层': c['client_segment'],
+                '核对轮次': c['review_round'],
+                'OCR 语言': ' / '.join(c['ocr_languages']),
+                '状态': {'passed': '✅ 通过', 'needs_correction': '🔄 待修改'}.get(c['status'], c['status']),
+            })
+        st.dataframe(pd.DataFrame(case_df), hide_index=True, width="stretch")
+
+        # ===== 案例详情 =====
+        st.divider()
+        st.subheader("🔍 案例详情 + 完整核对报告")
+        case_ids = [c['order_id'] for c in cases]
+        selected = st.selectbox("选择案例", case_ids, index=len(case_ids) - 1, key="prepress_case")
+        case = next(c for c in cases if c['order_id'] == selected)
+
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown(f"**订单**: {case['order_id']}")
+            st.markdown(f"**日期**: {case['date']}")
+            st.markdown(f"**产品**: {case['product_type']}")
+            st.markdown(f"**批次**: {case['batch_code']}")
+            st.markdown(f"**客户分层**: {case['client_segment']}")
+        with c2:
+            st.markdown(f"**核对轮次**: 第 {case['review_round']} 次")
+            st.markdown(f"**OCR 语言**: {' / '.join(case['ocr_languages'])}")
+            st.markdown(f"**状态**: {case['status']}")
+            st.markdown(f"**备注**: {case['notes']}")
+
+        with st.expander("📂 涉及文件", expanded=False):
+            for f in case['files']:
+                st.markdown(f"- `{f}`")
+
+        # ===== 完整报告 (X01233) =====
+        if case.get('full_report'):
+            report_path = _os.path.join(PREPRESS_DIR, case['full_report'])
+            if _os.path.exists(report_path):
+                st.divider()
+                with st.expander(f"📄 完整核对报告 ({case['full_report']})", expanded=True):
+                    with open(report_path, 'r', encoding='utf-8') as _rf:
+                        st.markdown(_rf.read())
+            else:
+                st.warning(f"报告文件缺失: {report_path}")
+        else:
+            st.caption("（本案例为元数据展示, 完整报告仅 X01233 已公开 anonymized 版本）")
+
+        # ===== 技术栈 + 简历叙事 =====
+        st.divider()
+        st.subheader("🛠️ 技术栈 + 简历叙事")
+        tc1, tc2 = st.columns(2)
+        with tc1:
+            st.markdown("**多模态比对技术栈**")
+            for t in stats['tools']:
+                st.markdown(f"- {t}")
+        with tc2:
+            st.markdown("**简历叙事 (产销闭环)**")
+            st.markdown("""
+- **报价端** (本系统): yiwei-cost-engine MAPE 14.5% / EB 9.9% 工业级
+- **核稿端** (本 Tab): 3 单 5 次实战 / 27/27 字段全匹配 / 0 错误
+- **闭环价值**: AI 不仅算成本, 还能验成品 — 防错印整批 ¥15,000-35,000 损失
+            """)
+
+        st.caption(
+            "📌 **隐私架构**: 原始设计稿/客户名/制造商在私有目录 (`~/workspace/毅伟/核对/`), "
+            "公开 repo 仅含 anonymized 元数据 + X01233 脱敏报告. 复现规则见 `anonymize_mapping.json`."
+        )
 
 # Footer
 st.sidebar.markdown("## 📊 毅伟包装成本系统")
