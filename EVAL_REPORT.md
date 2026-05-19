@@ -296,16 +296,71 @@ jobs:
 
 ---
 
-## 9. Changelog
+## 9. GBM Baseline — Phase D6
+
+> **目的**: 升级 §1-3 的 flute-stratified median pricing baseline 为 ML 模型 (HistGradientBoostingRegressor)，验证"统计学意义上是否学到模式" (R²)。
+
+### 训练数据 (n=45 合并去重)
+
+- `data/demo.db.precheck_costs` (n=40, 已脱敏)
+- `data/ground_truth_22rows.csv` (n=5, 22 行中 5 行新数据未在 demo.db)
+
+flute 分布: EB 35 / BC 8 / 单E瓦 2
+
+### 特征工程 (6 维)
+
+| 特征 | 来源 | 处理 |
+|---|---|---|
+| `area_m2` | size_w × size_h / 10⁶ | 直接 |
+| `log_qty` | order_qty | log1p 变换 (压扁长尾) |
+| `flute` | 从 material 解析 | label encode (EB=0/BC=1/...) |
+| `total_gram` | material 字符串提取 `\d+g` | 累加 |
+| `has_lam` | film_unit > 0 | binary |
+| `is_export` | file 名含 "外贸"/"加纳" | binary |
+
+### 5-fold CV 结果 (random_state=42)
+
+| 指标 | flute-median | **GBM** | 改善 |
+|---|:--:|:--:|:--:|
+| MAE ¥/m² | 0.600 | **0.329** | **-45%** ✅ |
+| MAPE % | 30.1 | 27.9 | -2.2pp ✅ |
+| Bias | -0.080 | +0.076 | 接近无偏 (绝对值持平) |
+| **R²** | 0.20 | **0.63** | **+216%** ✅ 🎉 |
+
+### 关键洞察
+
+> **R² 0.20 → 0.63** = GBM 真正学到了 cost_per_m2 的结构性模式 (R² > 0.5 是"统计学意义"门槛)。
+> **MAE 砍半 (0.60→0.33)** = 单点预测精度质的提升。
+> MAPE 改善小 (-2.2pp) 但 MAE/R² 巨变 = GBM 在分布尾部 (outlier) 表现远好于 median。
+
+### Production 集成路径 (未来)
+
+- 当前: train_gbm.py 独立训练 + eval 报告 (不嵌入 app.py)
+- 下一步可选: app.py fcb 字典 → 调用 GBM 预测替代瓦型基准价
+- 风险: GBM 对小样本敏感, 当前 n=45 训练集仍偏小, 建议数据增长到 n≥100 再嵌入
+
+### 训练 + 复现
+
+```bash
+python3 train_gbm.py    # 5-fold CV + 保存 models/gbm_cpm.pkl
+# 输出: R² 0.6269, MAE 0.3287, MAPE 27.9%
+```
+
+模型文件 `models/gbm_cpm.pkl` (~50KB) 已入 repo，可直接加载 (无需重训)。
+
+---
+
+## 10. Changelog
 
 | Date | Change | Trigger |
 |---|---|---|
 | 2026-05-17 | Initial EVAL_REPORT.md (n=43 material ¥/m² MAPE) | Eval-driven simulation revealed README's `±15% → ±8%` was estimated |
 | 2026-05-18 | **Data semantic audit + Phase B + Phase C** | 9 .xls × 22 rows ground truth → contract MAPE 41.3% → 17.1% (主流 12.6%) |
 | 2026-05-18 | **Phase D1 面纸精算 (克重 × ¥/吨)** | 17.1% → **14.5%** (主流 9.9% 🟢 工业级)，越过 < 15% 可用阈值 |
-| 2026-05-19 | **Phase D4 `weekly_eval.py` drift monitor** | System 7-piece-set 第 7 件完成 (Loader/Predictor/Metrics/Breakdown/Regression/ContractEval/**DriftMonitor**) |
+| 2026-05-19 | Phase D4 `weekly_eval.py` drift monitor | System 7-piece-set 第 7 件完成 |
+| 2026-05-19 | **Phase D6 GBM baseline** (HistGradientBoosting) | R² 0.20 → **0.63** (+216%), MAE 0.60 → 0.33 (砍半), MAPE 30.1% → 27.9% |
 | TBD | Phase D2: BC outlier 产品配置维度 (160g 耐破 + 涂层) | BC outlier 修复 |
-| TBD | Phase D6: XGBoost baseline upgrade | Targets R² > 0.3 |
+| TBD | Phase D5: 板材公式 blong/bshort 校准 | 需业务侧 L/W/H 数据补充 |
 
 ---
 
