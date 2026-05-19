@@ -236,6 +236,11 @@ with tab1:
                                          help="数量摊销: 印刷开机费/qty + 单只变动 (实测硅酮 5色 K=1250)")
             lam = st.checkbox("覆膜", False, key="qlm")
             pad = st.checkbox("垫片", False, key="qpd")
+            # Phase G1: 反向亏损告警 — 防 02-02 类亏损单 (客户压价 < 我方成本)
+            client_quote = st.number_input(
+                "客户已给价 ¥/只 (可选, 反向校验)", 0.0, 100.0, 0.0, 0.1, key="qcq",
+                help="留空=按我方建议报价; 若客户已给定 → 实测毛利对比, 触发亏损告警 (02-02 案例防御)"
+            )
         
         with st.expander("📋 常用模板", expanded=False):
             tc = st.columns(5)
@@ -336,11 +341,38 @@ with tab1:
         st.divider()
         st.subheader("💰 报价结果")
 
-        # 亏损/低毛利告警 (基于 02-02 案例 -15.9% 教训)
+        # Phase G1: 反向亏损告警 (输出侧, 优先级最高)
+        # ground truth: 02-02 新安 19659 只 客户给价 ¥4.15 vs 我方成本 ¥4.81 → 亏 ¥13,000
+        if client_quote > 0:
+            actual_margin_pct = (client_quote - cost) / client_quote * 100
+            actual_loss_per_unit = cost - client_quote
+            total_loss = actual_loss_per_unit * qty
+            if actual_margin_pct < 0:
+                st.error(
+                    f"🔴🔴 **亏损单警报!!!** 客户给价 ¥{client_quote:.2f} < 我方成本 ¥{cost:.2f} = "
+                    f"亏 ¥{actual_loss_per_unit:.2f}/只 × {qty:,} 只 = **总亏 ¥{total_loss:,.0f}** "
+                    f"({actual_margin_pct:.1f}%). "
+                    f"⚠️ 02-02 案例: 新安 19659 只大单同模式 -15.9% / 实测亏 ¥13K. **拒签或重谈**!"
+                )
+            elif actual_margin_pct < 5:
+                st.error(f"🔴 客户给价对应实测毛利仅 {actual_margin_pct:.1f}% (< 5%) — 薄利, 建议谈判")
+            elif actual_margin_pct < 8:
+                st.warning(f"🟡 客户给价实测毛利 {actual_margin_pct:.1f}% — 偏薄, 复核成本结构")
+            else:
+                st.success(f"🟢 客户给价 ¥{client_quote:.2f} → 实测毛利 {actual_margin_pct:.1f}% ✅ 可接")
+            # 对比展示
+            diff_vs_suggest = (client_quote - price) / price * 100
+            st.caption(
+                f"📊 客户价 ¥{client_quote:.2f} | 我方成本 ¥{cost:.2f} | 我方建议 ¥{price:.2f} | "
+                f"客户给价 vs 我方建议: {diff_vs_suggest:+.1f}%"
+                + (" (客户压价幅度大, 注意亏损模式)" if diff_vs_suggest < -10 else "")
+            )
+
+        # 输入侧告警 (我方建议价毛利, 兜底)
         if mp < 5:
-            st.error(f"🔴 当前毛利率 {mp:.1f}% < 5% — 接近亏损！历史教训: 2026-02-02 新安 19659 只大单实际 -15.9%, 单笔亏 ¥13,000")
+            st.error(f"🔴 我方建议毛利率 {mp:.1f}% < 5% — 接近亏损！(历史教训: 2026-02-02 新安 19659 只大单 -15.9% 亏 ¥13,000)")
         elif mp < 8:
-            st.warning(f"🟡 毛利率 {mp:.1f}% 偏薄 — 建议复核同客户同尺寸历史均值")
+            st.warning(f"🟡 我方建议毛利率 {mp:.1f}% 偏薄 — 建议复核同客户同尺寸历史均值")
 
         r1, r2, r3 = st.columns(3)
         with r1:
