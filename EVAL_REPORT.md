@@ -228,15 +228,83 @@ python3 eval_runner.py    # Step 7 应输出 合同价 MAPE 17.1%
 
 ---
 
-## 8. Changelog
+## 8. Drift Monitor — Phase D4 (System 7-piece-set 完成)
+
+> **System 7 件套**: Loader → Predictor → Metrics → Breakdown → Regression → ContractEval → **DriftMonitor** ✅
+
+`weekly_eval.py` 自动跑 contract MAPE eval, 对比上次结果, 任一关键指标变化 ≥ ±5pp 触发漂移告警。
+
+### 用法
+
+```bash
+python3 weekly_eval.py              # 跑一次, 追加到 data/eval_history.jsonl
+python3 weekly_eval.py --history    # 查看历史趋势
+python3 weekly_eval.py --dry-run    # 跑但不写入历史 (调试用)
+```
+
+### 退出码语义 (CI 友好)
+
+- `0` = 无漂移 (所有指标 < ±5pp)
+- `1` = 漂移检测到 (任一关键指标 ≥ ±5pp)
+- `2` = eval 失败 (数据缺失等)
+
+### 监控项 (任一漂移即告警)
+
+- 整体 contract MAPE
+- 整体 cost MAPE
+- 各 flute 分层 MAPE (EB / BC / 单E瓦 / ...)
+- Bias (含正/负向)
+
+### 部署示例
+
+**cron 每周一 09:00 (HK 时区)**:
+```cron
+0 9 * * 1  cd ~/yiwei-cost-engine && python3 weekly_eval.py >> logs/weekly.log 2>&1
+```
+
+**GitHub Actions** (UTC 周一 01:00 = HK 周一 09:00):
+```yaml
+on:
+  schedule:
+    - cron: '0 1 * * 1'
+jobs:
+  drift-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -r requirements.txt
+      - run: python3 weekly_eval.py
+```
+
+### 历史 JSONL 格式 (`data/eval_history.jsonl`)
+
+```jsonl
+{"ts": "2026-05-19T11:27:35", "n_rows": 22, "n_contract": 17, "contract": {"mae": 0.791, "mape": 14.5, "bias": -0.332, "r2": -0.7211}, "by_flute": {"BC": {...}, "EB": {...}}}
+```
+
+### Drift 告警示例 (假设手动改 fcb_BC 让 MAPE 飘 +6pp)
+
+```
+🔴 漂移告警 (阈值 ±5.0pp):
+  - 整体 contract MAPE: 14.5% → 20.5% (+6.0pp)
+  - BC 瓦 MAPE: 48.9% → 35.0% (-13.9pp)
+
+✅ 已追加到历史: data/eval_history.jsonl
+```
+
+→ exit code 1 → CI 会标红 → 推送告警通知
+
+---
+
+## 9. Changelog
 
 | Date | Change | Trigger |
 |---|---|---|
 | 2026-05-17 | Initial EVAL_REPORT.md (n=43 material ¥/m² MAPE) | Eval-driven simulation revealed README's `±15% → ±8%` was estimated |
 | 2026-05-18 | **Data semantic audit + Phase B + Phase C** | 9 .xls × 22 rows ground truth → contract MAPE 41.3% → 17.1% (主流 12.6%) |
 | 2026-05-18 | **Phase D1 面纸精算 (克重 × ¥/吨)** | 17.1% → **14.5%** (主流 9.9% 🟢 工业级)，越过 < 15% 可用阈值 |
+| 2026-05-19 | **Phase D4 `weekly_eval.py` drift monitor** | System 7-piece-set 第 7 件完成 (Loader/Predictor/Metrics/Breakdown/Regression/ContractEval/**DriftMonitor**) |
 | TBD | Phase D2: BC outlier 产品配置维度 (160g 耐破 + 涂层) | BC outlier 修复 |
-| TBD | Phase D4: `weekly_eval.py` drift monitor | Completes System 7-piece-set coverage |
 | TBD | Phase D6: XGBoost baseline upgrade | Targets R² > 0.3 |
 
 ---

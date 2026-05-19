@@ -46,3 +46,6 @@ anonymize_mapping.json
 *.db.bak-*
 data/*.db.bak-*
 *.bak-*
+
+# Cron / weekly_eval log dumps (local accumulation, no repo pollution)
+logs/
