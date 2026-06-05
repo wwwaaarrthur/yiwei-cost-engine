@@ -3,6 +3,7 @@
 import os, re, sqlite3, json
 from pathlib import Path
 from docx import Document
+from sizing_engine import infer_process_modes
 
 SRC = os.path.expanduser("~/Desktop/生产工艺单")
 DB = os.path.join(os.path.dirname(__file__), "data", "process_sheets.db")
@@ -128,6 +129,10 @@ def extract_sheet(filepath):
             data['print_style'] = '两页成型'
         elif '单页' in data.get('notes', ''):
             data['print_style'] = '单页成型'
+        modes = infer_process_modes(data.get('notes'))
+        data['forming_mode'] = modes.forming_mode
+        data['face_layout'] = modes.face_layout
+        data['board_layout'] = modes.board_layout
         
         # Detect if it's a quote (报价)
         data['is_quote'] = '报价' in data.get('file', '') or '报价' in data.get('dirname', '')
@@ -152,10 +157,17 @@ def main():
             print_qty INTEGER, lamination TEXT, has_lamination BOOLEAN,
             board_w INTEGER, board_h INTEGER, flute_type TEXT, board_material TEXT,
             padding_material TEXT, padding_size TEXT, grid_material TEXT,
-            print_style TEXT, notes TEXT, is_quote BOOLEAN,
+            print_style TEXT, forming_mode TEXT, face_layout TEXT, board_layout TEXT,
+            notes TEXT, is_quote BOOLEAN,
             error TEXT
         )
     ''')
+    existing_cols = {
+        row[1] for row in conn.execute("PRAGMA table_info(process_sheets)").fetchall()
+    }
+    for col in ("forming_mode", "face_layout", "board_layout"):
+        if col not in existing_cols:
+            conn.execute(f"ALTER TABLE process_sheets ADD COLUMN {col} TEXT")
     
     # Walk all directories
     total, success, failed = 0, 0, 0
@@ -184,7 +196,7 @@ def main():
             'paper_w','paper_h','paper_spec','print_qty','lamination','has_lamination',
             'board_w','board_h','flute_type','board_material',
             'padding_material','padding_size','grid_material',
-            'print_style','notes','is_quote','error']
+            'print_style','forming_mode','face_layout','board_layout','notes','is_quote','error']
     
     for r in rows:
         vals = [r.get(c) for c in cols]

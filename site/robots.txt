@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://yiwei-cost-engine.pages.dev/sitemap.xml

@@ -20,6 +20,7 @@ __pycache__/
 # Real production data (contains real client names, NEVER commit)
 data/process_sheets.db
 data/process_sheets.db-journal
+data/yiwei_demo.db
 data/raw/
 data/original/
 data/*.xlsx

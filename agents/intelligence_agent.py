@@ -11,14 +11,13 @@ import statistics
 import re
 from typing import Optional
 
+from db_config import resolve_db_config
+
 
 def _default_db_path() -> str:
-    """Resolve DB path the same way app.py does — prod first, demo fallback."""
-    here = os.path.dirname(os.path.abspath(__file__))
-    repo_root = os.path.dirname(here)
-    prod = os.path.join(repo_root, "data", "process_sheets.db")
-    demo = os.path.join(repo_root, "data", "demo.db")
-    return prod if os.path.exists(prod) else demo
+    """Resolve DB path the same way app.py does."""
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return resolve_db_config(repo_root).path
 
 
 class IntelligenceAgent:

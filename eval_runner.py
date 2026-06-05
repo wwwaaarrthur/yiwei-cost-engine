@@ -5,7 +5,7 @@
 ║  评估报价公式准确度 → 质量层核心产出物                  ║
 ╚══════════════════════════════════════════════════════════╝
 
-评测对象：app.py 中的报价公式（纸板面积 × 瓦型基准价 × 数量系数 ÷ 毛利率）
+评测对象：已知材料面积条件下的价格公式，不验证尺寸引擎或拼版判断
 Ground Truth（真实值）：precheck_costs 表中的实际成本（unit_cost）
 
 5 个模块：
@@ -18,6 +18,7 @@ Ground Truth（真实值）：precheck_costs 表中的实际成本（unit_cost�
 运行：python3 eval_runner.py
 """
 
+import os
 import sqlite3
 import json
 import sys
@@ -25,7 +26,10 @@ import re
 from datetime import datetime
 import numpy as np
 
-DB = "data/process_sheets.db"
+HERE = os.path.dirname(os.path.abspath(__file__))
+DB_PROD = os.path.join(HERE, "data", "process_sheets.db")
+DB_DEMO = os.path.join(HERE, "data", "demo.db")
+DB = DB_PROD if os.path.exists(DB_PROD) else DB_DEMO
 
 # ═══════════════════════════════════════════════════════════
 # 模块 1: Loader — 加载 ground truth
@@ -36,6 +40,13 @@ DB = "data/process_sheets.db"
 
 def load_ground_truth():
     """从预核单加载实际成本作为 ground truth"""
+    if not os.path.exists(DB):
+        raise FileNotFoundError(
+            f"No evaluation database found. Expected either:\n"
+            f"  - {DB_PROD} (private production DB)\n"
+            f"  - {DB_DEMO} (public anonymized demo DB)"
+        )
+
     conn = sqlite3.connect(DB)
     cursor = conn.cursor()
 
@@ -56,7 +67,8 @@ def load_ground_truth():
         })
 
     conn.close()
-    print(f"\n✅ 加载 {len(records)} 条预核单作为 ground truth")
+    db_label = "production" if DB == DB_PROD else "anonymized demo"
+    print(f"\n✅ 加载 {len(records)} 条预核单作为 ground truth ({db_label} DB)")
     return records
 
 
@@ -104,7 +116,7 @@ def predict_cost(record, fcb_params):
 
 
 # ═══════════════════════════════════════════════════════════
-# Phase B+C: 完整 6 项报价公式 (与 app.py 同步)
+# Phase B+C: 条件价格公式（材料面积已知）
 # ═══════════════════════════════════════════════════════════
 # 评估目标：contract_price (真实合同价) 而非 material ¥/m²
 # 数据源：9 张 .xls 预核单 22 行 ground truth
@@ -132,17 +144,25 @@ def cmargin_v2(tier, qty, is_export=False):
 
 def predict_cost_full(record, params):
     """
-    Phase C 完整 6 项报价公式预测 — 与 app.py 同步
+    Phase C 完整 6 项条件价格公式预测。
 
-    输入 (最小集，模拟 app.py UI 输入)：
-      area_m2, qty, flute, order_type, print_colors, has_lam, has_pad
+    优先输入 sizing_engine 产出的独立面积：
+      board_area_m2, face_area_m2
+    旧预核单只有 area_m2 时，面纸面积仍回退为板材面积的 60%。该回退只用于
+    保持历史评估可复现，不能代表员工确认的尺寸规则。
     不使用 ground truth 字段 (corr_cpm/pad_total/white_unit/print_unit/film_unit/other_cost)
     否则等同"用真值预测真值"
 
     params: dict {fcb, tier}
     返回: (predicted_cost_per_unit, predicted_contract_price, breakdown_dict)
     """
-    area = record.get('area_m2') or 0
+    board_area = record.get('board_area_m2') or record.get('area_m2') or 0
+    face_area = record.get('face_area_m2')
+    if face_area is None:
+        face_area = board_area * 0.6
+        area_source = 'legacy_board_area_with_60pct_face_fallback'
+    else:
+        area_source = 'independent_sizing_engine_areas'
     qty = record.get('qty') or 1
     flute = record.get('flute') or 'EB'
     fcb = params.get('fcb', {
@@ -150,12 +170,12 @@ def predict_cost_full(record, params):
         '单C瓦': 1.5, '单B瓦': 1.3, '单E瓦': 1.1, 'EE': 1.4,
     })
     bp = fcb.get(flute, 1.5)
-    bc = area * bp                              # 瓦楞 (fcb 学习)
+    bc = board_area * bp                        # 瓦楞 (fcb 学习)
     # Phase D1: 面纸按克重 × ¥/吨 精算 (替代 0.45 ¥/m² 硬编码)
     paper_gsm = params.get('paper_gsm', 250)
     paper_per_tonne = params.get('paper_per_tonne', 3410)
     paper_cpm = (paper_gsm * paper_per_tonne) / 1_000_000   # 实测 250×3410/1e6 = 0.853
-    pc = area * 0.6 * paper_cpm                 # 面纸 (60% 板材面积 × 实测 ¥/m²)
+    pc = face_area * paper_cpm                  # 面纸 (独立面积 × 实测 ¥/m²)
     lc = 0.25 if record.get('has_lam') else 0   # 覆膜 (default 0.25 ¥/只)
     pdc = 0.15 if record.get('has_pad') else 0  # 垫片 (default 0.15 ¥/只)
     # 印刷按色数表
@@ -182,6 +202,7 @@ def predict_cost_full(record, params):
         'bc': round(bc, 3), 'pc': round(pc, 3), 'lc': round(lc, 3),
         'pdc': round(pdc, 3), 'print': round(print_cost, 3),
         'other': round(other_cost, 3), 'sf': sf, 'margin': round(margin, 3),
+        'area_source': area_source,
     }
     return round(cost, 3), round(price, 3), breakdown
 
@@ -324,7 +345,7 @@ def breakdown_by_flute(records, fcb_params):
     for flute in sorted(flute_groups.keys()):
         g = flute_groups[flute]
         m = calculate_metrics(g['preds'], g['actuals'])
-        rating = '🟢 可用' if m['mape'] < 15 else ('🟡 一般' if m['mape'] < 30 else '🔴 需改善')
+        rating = '🟢 条件通过' if m['mape'] < 15 else ('🟡 一般' if m['mape'] < 30 else '🔴 需改善')
         print(f"\n  {rating} {flute}瓦 (n={m['n']})")
         print(f"    基准价: ¥{fcb_params.get(flute, 1.5):.2f}/m²")
         print(f"    实际中位: ¥{np.median(g['actuals']):.2f}/m²")
@@ -394,6 +415,7 @@ if __name__ == '__main__':
     print("║  毅伟成本引擎 · AI Eval Report         ║")
     print(f"║  {datetime.now().strftime('%Y-%m-%d %H:%M')}                        ║")
     print("╚════════════════════════════════════════╝")
+    print("⚠️  Scope: price accuracy conditional on provided material area; sizing accuracy is tested separately.")
 
     # Step 1: 加载 ground truth
     records = load_ground_truth()
@@ -426,7 +448,7 @@ if __name__ == '__main__':
     print(f"  R²:   {overall['r2']:.4f}           ← 0=瞎猜 1=完美")
 
     if overall['mape'] < 15:
-        print(f"\n  🟢 整体可用（MAPE {overall['mape']:.1f}% < 15%）")
+        print(f"\n  🟢 已知材料面积条件下通过（MAPE {overall['mape']:.1f}% < 15%）")
     elif overall['mape'] < 30:
         print(f"\n  🟡 整体一般（MAPE {overall['mape']:.1f}%），建议分瓦型查看")
     else:
@@ -441,17 +463,16 @@ if __name__ == '__main__':
     regression_test(records, current_fcb, new_fcb)
 
     # ═══════════════════════════════════════════════════════════
-    # Step 7: Contract Price Eval (Phase B+C 完整 6 项公式)
+    # Step 7: Conditional Contract Price Eval (材料面积已知)
     # ═══════════════════════════════════════════════════════════
     # 数据源：9 张 .xls 预核单 22 行 ground truth (含合同价 17 行)
     # 评估目标：客户实际合同价 (vs 仅材料 ¥/m²)
-    import os
-    csv_path = 'data/ground_truth_22rows.csv'
+    csv_path = os.path.join(HERE, 'data', 'ground_truth_22rows.csv')
     if os.path.exists(csv_path):
         print("\n" + "═" * 60)
-        print("📊 Step 7: Contract Price Eval (Phase B+C 完整公式)")
+        print("📊 Step 7: Conditional Contract Price Eval (provided material area)")
         print("═" * 60)
-        print(f"\n  数据源: {csv_path}")
+        print(f"\n  数据源: {os.path.relpath(csv_path, HERE)}")
         xls_rows = load_xls_ground_truth(csv_path)
         print(f"  加载 {len(xls_rows)} 行 ground truth")
 
@@ -467,7 +488,7 @@ if __name__ == '__main__':
             print(f"    MAE:  ¥{m['mae']:.3f}/只  |  MAPE: {m['mape']:.1f}%")
             print(f"    Bias: {m['bias']:+.3f}/只  |  R²: {m['r2']:.4f}")
             if m['mape'] < 15:
-                print(f"  🟢 合同价 MAPE {m['mape']:.1f}% < 15% — 可用")
+                print(f"  🟢 合同价 MAPE {m['mape']:.1f}% < 15% — 条件评估通过，不含尺寸验证")
             elif m['mape'] < 25:
                 print(f"  🟡 合同价 MAPE {m['mape']:.1f}% 一般")
             else:

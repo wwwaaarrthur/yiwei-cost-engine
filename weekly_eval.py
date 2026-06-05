@@ -171,7 +171,7 @@ def print_report(new, old=None):
         print("(首次跑, 无历史对比)\n")
         if new['contract']:
             m = new['contract']
-            rating = '🟢 工业级' if m['mape'] < 10 else ('🟢 可用' if m['mape'] < 15 else ('🟡 一般' if m['mape'] < 25 else '🔴 需改善'))
+            rating = '🟢 该细分样本表现较好' if m['mape'] < 10 else ('🟢 条件评估通过' if m['mape'] < 15 else ('🟡 一般' if m['mape'] < 25 else '🔴 需改善'))
             print(f"  整体 contract: MAPE {m['mape']:.1f}% / Bias {m['bias']:+.3f} / R² {m['r2']:.4f}  {rating}")
         if new['cost']:
             m = new['cost']

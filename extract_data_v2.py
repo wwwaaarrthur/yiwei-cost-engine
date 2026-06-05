@@ -2,6 +2,7 @@
 """Extract all process sheets with cell-position-based parsing."""
 import os, re, sqlite3
 from docx import Document
+from sizing_engine import infer_process_modes
 
 SRC = os.path.expanduser("~/Desktop/生产工艺单")
 DB = os.path.join(os.path.dirname(__file__), "data", "process_sheets.db")
@@ -151,6 +152,10 @@ def extract_file(filepath):
             data['print_style'] = '两页成型'
         elif '单页' in notes_str:
             data['print_style'] = '单页成型'
+        modes = infer_process_modes(notes_str)
+        data['forming_mode'] = modes.forming_mode
+        data['face_layout'] = modes.face_layout
+        data['board_layout'] = modes.board_layout
         
         data['is_quote'] = '报价' in data.get('file', '') or '报价' in data.get('dirname', '')
         
@@ -174,7 +179,8 @@ def main():
             print_qty_str TEXT, lamination TEXT, has_lamination INTEGER DEFAULT 0,
             board_w INTEGER, board_h INTEGER, flute_type TEXT, board_material TEXT,
             padding_material TEXT, padding_size TEXT, grid_material TEXT,
-            print_style TEXT, notes TEXT, is_quote INTEGER DEFAULT 0,
+            print_style TEXT, forming_mode TEXT, face_layout TEXT, board_layout TEXT,
+            notes TEXT, is_quote INTEGER DEFAULT 0,
             error TEXT
         )
     ''')
@@ -204,7 +210,7 @@ def main():
             'paper_w','paper_h','paper_spec','print_qty_str','lamination','has_lamination',
             'board_w','board_h','flute_type','board_material',
             'padding_material','padding_size','grid_material',
-            'print_style','notes','is_quote','error']
+            'print_style','forming_mode','face_layout','board_layout','notes','is_quote','error']
     
     for r in rows:
         vals = [r.get(c) for c in cols]

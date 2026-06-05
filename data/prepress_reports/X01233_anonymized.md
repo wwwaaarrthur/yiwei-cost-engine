@@ -1,14 +1,14 @@
 <!--
 公开版本: 已通过 anonymize 处理 (客户名/制造商/登记证号)
-原报告位置: ~/workspace/毅伟/核对/26.5.15/X01233/ (private)
-脱敏映射: anonymize_mapping.json
+原始客户文件位置: private source archive (not committed)
+脱敏映射: private mapping file; public schema example in anonymize_mapping.example.json
 化学成分/GB-T 标准/泰文通用术语保留 (行业通用知识非敏感)
 -->
 
 # X01233 设计稿核对报告
 
 **订单编号**：X01233  
-**产品**：东南亚出口客户X-Agro Glyphosate 48% SL 4L×6 纸箱 (CK3-4L)  
+**产品**：东南亚出口客户X-Agro AGRO_ACTIVE 48% SL 4L×6 纸箱 (CK3-4L)
 **核对日期**：2026-05-15  
 **核对模式**：客户源文件（RAR内JPG）作为基准，验证设计师PDF是否完整还原
 
@@ -19,8 +19,8 @@
 | 角色 | 文件名 | 尺寸/页数 |
 |------|--------|----------|
 | 📦 客户源文件 | `2026.06.05（CK3—4L） 01233(1).rar` | 5个文件 |
-| ├ 纸箱设计图 | `东南亚出口客户X-Agro Glyphosate 48% 4LX6 纸箱(CK3-4L).jpg` | 20,714×8,586px |
-| ├ 标签设计图 | `东南亚出口客户X-Agro Glyphosate 48% SL 4L标签(CK3-4L).jpg` | 6,160×2,548px |
+| ├ 纸箱设计图 | `东南亚出口客户X-Agro AGRO_ACTIVE 48% 4LX6 纸箱(CK3-4L).jpg` | 20,714×8,586px |
+| ├ 标签设计图 | `东南亚出口客户X-Agro AGRO_ACTIVE 48% SL 4L标签(CK3-4L).jpg` | 6,160×2,548px |
 | ├ 瓶子摆放 | `纸箱内瓶子的摆放.JPG` | 3,888×5,184px |
 | ├ 包装要求 | `包装物及包装要求.doc` | 49KB（旧版二进制，无法文本提取）|
 | └ Logo | `b893ac86-*.png` | 653×761px |
@@ -45,7 +45,7 @@
 |--------|--------------------------|----------------|:--:|
 | 箱体尺寸 | 570×255×340mm | 570×255×340MM | ✅ |
 | 订单编号 | — | X01233 | ✅ |
-| 产品名称 | Glyphosate-isopropylammonium 48% W/V SL | Glyphosate-isopropylammonium 48% W/V SL | ✅ |
+| 产品名称 | AGRO_ACTIVE-isopropylammonium 48% W/V SL | AGRO_ACTIVE-isopropylammonium 48% W/V SL | ✅ |
 | 包装规格 | 4LTR×6GALLON / CARTON | 4LTR×6GALLON / CARTON | ✅ |
 | 制造商 | Chemical Group B | Chemical Group B | ✅ |
 | 原产国 | THE PEOPLE'S REPUBLIC OF CHINA | THE PEOPLE'S REPUBLIC OF CHINA | ✅ |
@@ -68,7 +68,7 @@
 | 产品类别 | สารกำจัดวัชพืช（除草剂） | สารกำจัดวัชพืช | ✅ |
 | 危险等级 | วัตถุอันตรายจำกัดการใช้ | วัตถุอันตรายจำกัดการใช้ | ✅ |
 | 有效成分（泰） | ไกลโฟเซต-ไอโซโพรพิลแอมโมเนียม 48 | ไกลโฟเซต-ไอโซโพรพิลแอมโมเนียม 48 | ✅ |
-| 有效成分（英） | Glyphosate-isopropylammonium 48 | Glyphosate-isopropylammonium 48 | ✅ |
+| 有效成分（英） | AGRO_ACTIVE-isopropylammonium 48 | AGRO_ACTIVE-isopropylammonium 48 | ✅ |
 | 通用名称（泰） | ไกลโฟเซต-ไอโซโพรพิลแอมโมเนียม | ไกลโฟเซต-ไอโซโพรพิลแอมโมเนียม | ✅ |
 | 通用名称（英） | glyphosate-isopropylammonium | glyphosate-isopropylammonium | ✅ |
 | 登记证号 | ****-**** | ****-**** | ✅ |

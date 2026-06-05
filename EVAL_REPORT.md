@@ -1,10 +1,16 @@
 # Yiwei Cost Engine · AI Evaluation Report
 
 > **Real eval results from `eval_runner.py` against n=43 ground truth precheck orders.**
-> Last updated: 2026-05-17
+> Last updated: 2026-06-04
 > Reproducible: run `python3 eval_runner.py` after setup (see §5)
 
 This report is the system-thinking proof for the project — it surfaces what works, what fails, and why, rather than headline accuracy numbers.
+
+> **2026-06-04 scope correction:** The contract-price metrics below are conditional on
+> precheck material area already being provided. Historical rows do not contain enough
+> structured forming/imposition parameters to run the new sizing engine end to end, and
+> the legacy eval falls back to `face area = 60% × board area`. Therefore `15.1%` is a
+> conditional price-model result, not sizing accuracy or end-to-end quote accuracy.
 
 ---
 
@@ -91,7 +97,7 @@ Any parameter change should defend itself against **all four metrics simultaneou
 | **Trade-off articulation** | New params: improved MAPE traded for degraded Bias — surfaced before shipping |
 | **Honest assessment over inflated claims** | R² = 0.18 disclosed; baseline weakness acknowledged; not hidden behind a "±8% accuracy" marketing number |
 | **Domain-grounded modeling decisions** | flute-stratified median chosen for interpretability; allows senior workers to audit error samples and feed corrections back |
-| **Production data ↔ public artifact separation** | `process_sheets.db` (production, 2,155 rows / 44 precheck) → `anonymize.py` → `demo.db` (public, 2,086 rows / 16 precheck) |
+| **Production data ↔ public artifact separation** | `process_sheets.db` (private production DB) → `anonymize.py` → `demo.db` (public anonymized DB: 2,155 rows / 44 precheck records) |
 
 > Industry consensus in 2026 (Sequoia AI Ascent · Karpathy, Cherny et al.): the bottleneck has shifted from coding to **Agentic Engineering** — eval pipelines, drift monitoring, regression discipline. This report is the artifact of that practice.
 
@@ -132,17 +138,17 @@ Open `http://localhost:8501`. The bundled `data/demo.db` loads automatically (an
 |---|---|---|
 | Baseline R² ≈ 0.18 | flute-stratified median is intentionally simple, doesn't capture board weight × lamination × printing-style interactions | Upgrade baseline to gradient-boosted trees (XGBoost / LightGBM) using existing 15+ structured features |
 | BC stratum n=9, Single-E n=2 | small-flute-type samples have high variance in metrics | Wait for production data growth (process_sheets.db updates weekly); current 2,155 rows → target 3,000+ before BC sub-model training |
-| No drift monitoring yet | eval runs are manual, not scheduled | Add `weekly_eval.py` cron job that runs `eval_runner.py` and alerts if MAPE shifts >5pp week-over-week (System 7-piece set completion) |
-| Ground truth n=43 only | precheck cost data slower to accumulate than process sheets | Monthly precheck data extraction from `precheck_costs` table (currently 44 rows in production, 16 in demo) |
+| Drift monitor exists, but external schedule is optional | `weekly_eval.py` can run locally/CI; production alerting depends on cron or GitHub Actions being enabled | Keep `weekly_eval.py --dry-run` in reviewer demo; enable GitHub Actions only if public CI signal is needed |
+| Ground truth remains small | 44 precheck rows exist; 43 valid material-cost rows currently enter the early eval, and the conditional contract eval uses 22 spreadsheet rows | Continue monthly precheck extraction; treat 15.1% as conditional on known material area and keep sample-size caveat explicit |
 
 ---
 
-## 7. Contract Price Eval — Phase B + Phase C (2026-05-18 NEW)
+## 7. Conditional Contract Price Eval — Phase B + Phase C
 
 > **数据语义审计发现**：§1-3 的 MAPE 评估的是 `material ¥/m²` (= unit_cost / board_area),
 > 字段语义实为「瓦楞单只成本/板材面积」—— 不是客户真实合同价。
 > Phase C 引入 **9 张 .xls 预核单 22 行 ground truth (含合同价 17 行)** 作为独立数据源,
-> 对完整 6 项报价公式跑合同价 MAPE 评估。
+> 对已知材料面积条件下的价格公式跑合同价 MAPE 评估；不验证成型、拼版或尺寸引擎。
 
 ### Phase C 数据源
 
@@ -151,15 +157,15 @@ Open `http://localhost:8501`. The bundled `data/demo.db` loads automatically (an
 | 4L 外贸水剂 ×2 (BC) | 出口 | 2 | ✅ |
 | YW-2026-02-02 (亏损批) | 大型农化客户 B 大单 | 3 | ✅ (-15% ~ -18%) |
 | YW-2026-02-04 / 04-01 / 04-07 / 04-09 | 大型农化客户 B | 11 | ✅ |
-| 硅酮硬管纸箱 (含数量阶梯) | 大型农化客户 B | 7 | 部分 |
+| 工业品硬管纸箱 (含数量阶梯) | 大型农化客户 B | 7 | 部分 |
 
-**公开 ground truth**：[`data/ground_truth_22rows.csv`](data/ground_truth_22rows.csv) — 22 行 .xls 提取数据 (客户名/产品名/材料品牌已脱敏，cost/contract 数字保持精确以便 reproduce)。
+**公开评估 fixture**：[`data/ground_truth_22rows.csv`](data/ground_truth_22rows.csv) — 22 行脱敏 .xls 提取样本，用于复现评估流程；原始 .xls、真实客户/产品/品牌名和内部证据包不公开。对外展示优先使用聚合指标与标准化指数，不展示行级合同价作为业务凭据。
 
 **复现方法**：
 ```bash
 git clone https://github.com/wwwaaarrthur/yiwei-cost-engine.git
 cd yiwei-cost-engine && pip install -r requirements.txt
-python3 eval_runner.py    # Step 7 应输出 合同价 MAPE 17.1%
+python3 eval_runner.py    # Step 7 应输出 合同价 MAPE 15.1%（public anonymized fixture）
 ```
 
 **私有源数据**：原 9 张 .xls 预核单 + 含真实客户/品牌名的 ground truth 留私有 (`/tmp/yiwei_eval/` 或 `data/process_sheets.db`，未在 git 中)。脱敏映射见 [`anonymize_mapping.example.json`](anonymize_mapping.example.json) 公开模板 + 本地私有 `anonymize_mapping.json` (gitignored)。csv 脱敏脚本：[`anonymize_csv.py`](anonymize_csv.py)。
@@ -171,15 +177,15 @@ python3 eval_runner.py    # Step 7 应输出 合同价 MAPE 17.1%
 | 旧公式 (push 前) | **41.3%** | -41.3% | n/a | (baseline) |
 | Phase B (3 项最小集) | 21.3% | -21.3% | n/a | +20.0pp |
 | Phase C (6 项完整) | 17.1% | -3.9% | 12.6% | +24.2pp |
-| **Phase D1 (面纸精算)** | **14.5%** 🟢 | **-1.9%** | **9.9%** 🟢 | **+26.8pp** |
+| **Phase D1 (面纸精算)** | **15.1%** 🟡 | **slight underquote** | **9.9%** 🟢 | **+26.2pp** |
 
 ### Phase C 改造内容
 
 1. **印刷成本表 + 数量摊销** (替代硬编码 ¥0.12/只)
    - 5 色阶 setup_fee + unit_var：`max(setup/qty, unit_var)`
-   - 实测依据：硅酮硬管 500→3000 只彩印 2.50→0.63 推出 K≈1250 / v≈0.63
+   - 实测依据：匿名工业品硬管 500→3000 只彩印 2.50→0.63 推出 K≈1250 / v≈0.63
 2. **出口/内销维度** (制费 0.82 vs 1.07 + 毛利 +4pp)
-   - 4L 实测出口毛利 14.8% vs 新安内销 5-8%
+   - 4L 实测出口毛利 14.8% vs 匿名大客户内销 5-8%
 3. **qty 阶梯毛利** (替代固定 vip/medium/small)
    - 22 行实测中位：≤500=30% / 501-2k=22% / 2k-5k=12% / 5k-20k=8% / >20k=6%
 4. **亏损告警** (毛利 <5% 红色 / <8% 黄色)
@@ -189,7 +195,7 @@ python3 eval_runner.py    # Step 7 应输出 合同价 MAPE 17.1%
 
 | 分层 | n | MAPE | Bias | 评级 |
 |---|:--:|:--:|:--:|:--:|
-| **EB 内销主流** | 15 (88% 订单) | **12.6%** | -6.2% | 🟢 **可用** |
+| **EB 内销主流** | 15 (88% 订单) | **12.6%** | -6.2% | 🟢 **条件通过（已知面积）** |
 | BC 出口 outlier | 2 (仅 4L*6壶) | 50.9% | -50.9% | 🔴 Phase D 必修 |
 | 整体 | 17 | 17.1% | -3.9% | 🟡 一般 |
 
@@ -197,9 +203,9 @@ python3 eval_runner.py    # Step 7 应输出 合同价 MAPE 17.1%
 
 | 分层 | n | MAPE | Bias | 评级 |
 |---|:--:|:--:|:--:|:--:|
-| **EB 内销主流** | 15 | **9.9%** | +2.1% | 🟢 **工业级** (< 10%) |
+| **EB 内销主流** | 15 | **9.9%** | +2.1% | 🟢 该细分样本表现较好 |
 | BC 出口 outlier | 2 | 48.9% | -48.9% | 🔴 Phase D2 待修 (产品配置维度) |
-| 整体 | 17 | **14.5%** | -1.9% | 🟢 **可用** (< 15%) |
+| 整体 | 17 | **15.1%** | slight underquote | 🟡 **接近 15% 阈值（已知面积）** |
 
 ### Phase D1 改造内容
 
@@ -213,7 +219,7 @@ python3 eval_runner.py    # Step 7 应输出 合同价 MAPE 17.1%
 ### Phase C/D1 关键洞察
 
 > **Phase C**: 主流订单 (EB 内销 n=15) MAPE 12.6% —— 6 项拆解 + qty 阶梯生效。
-> **Phase D1**: 面纸精算后 EB 内销 **MAPE 9.9%** —— 工业级 (< 10%)。Bias 翻转 -6.2% → +2.1% 接近无偏，公式收敛。
+> **Phase D1**: 面纸精算后 EB 内销条件 MAPE **9.9%**。Bias 翻转 -6.2% → +2.1% 接近无偏；该结果来自 n=15 单一大客户样本，且假设材料面积已知。
 > **BC outlier 仍 48.9%** —— 4L 高级配置 (160g 耐破纸 + 特种涂层 + 出口溢价) 仍需 Phase D2 加产品配置维度。
 
 ### Phase D1 后剩余限制
@@ -221,7 +227,7 @@ python3 eval_runner.py    # Step 7 应输出 合同价 MAPE 17.1%
 | 限制 | 影响 | Phase D2-6 修复方向 |
 |---|---|---|
 | 4L 外贸特殊配置 | BC outlier MAPE 48.9% | **Phase D2**: 加产品配置维度 (160g 耐破纸 + 特种涂层 + 出口溢价) |
-| 板材公式 blong/bshort 公差未校准 | 影响所有订单 ±5% | **Phase D5**: 用 9 张 .xls 反推 (l/w/h 数据需业务补) |
+| 新尺寸引擎尚无端到端评估 | 无法把条件价格 MAPE 当作新订单最终报价误差 | 用员工确认的成型/拼版字段补充 ground truth，分别评估尺寸和价格 |
 | ~~面纸 0.45 ¥/m² 默认偏低~~ ✅ | ✅ Phase D1 已修 | (完成) |
 | R² 仍 -0.72 | 公式仍非"统计学意义"上学到 | **Phase D6**: XGBoost baseline (Targets R² > 0.3) |
 | 无 drift monitor | eval 仍需手动 | **Phase D4**: weekly_eval.py 定时任务 |
@@ -279,14 +285,14 @@ jobs:
 ### 历史 JSONL 格式 (`data/eval_history.jsonl`)
 
 ```jsonl
-{"ts": "2026-05-19T11:27:35", "n_rows": 22, "n_contract": 17, "contract": {"mae": 0.791, "mape": 14.5, "bias": -0.332, "r2": -0.7211}, "by_flute": {"BC": {...}, "EB": {...}}}
+{"ts": "2026-06-05T20:23:00", "n_rows": 22, "n_contract": 17, "contract": {"mae": 0.833, "mape": 15.1, "bias": -0.361, "r2": -1.0617}, "by_flute": {"BC": {...}, "EB": {...}}}
 ```
 
 ### Drift 告警示例 (假设手动改 fcb_BC 让 MAPE 飘 +6pp)
 
 ```
 🔴 漂移告警 (阈值 ±5.0pp):
-  - 整体 contract MAPE: 14.5% → 20.5% (+6.0pp)
+  - 整体 contract MAPE: 15.1% → 21.1% (+6.0pp)
   - BC 瓦 MAPE: 48.9% → 35.0% (-13.9pp)
 
 ✅ 已追加到历史: data/eval_history.jsonl
@@ -316,22 +322,22 @@ flute 分布: EB 35 / BC 8 / 单E瓦 2
 | `flute` | 从 material 解析 | label encode (EB=0/BC=1/...) |
 | `total_gram` | material 字符串提取 `\d+g` | 累加 |
 | `has_lam` | film_unit > 0 | binary |
-| `is_export` | file 名含 "外贸"/"加纳" | binary |
+| `is_export` | file 名含 "外贸"/"出口" | binary |
 
 ### 5-fold CV 结果 (random_state=42)
 
 | 指标 | flute-median | **GBM** | 改善 |
 |---|:--:|:--:|:--:|
-| MAE ¥/m² | 0.600 | **0.329** | **-45%** ✅ |
-| MAPE % | 30.1 | 27.9 | -2.2pp ✅ |
-| Bias | -0.080 | +0.076 | 接近无偏 (绝对值持平) |
+| MAE ¥/m² | 0.593 | **0.331** | **-44%** ✅ |
+| MAPE % | 30.4 | 27.3 | -3.1pp ✅ |
+| Bias | -0.062 | +0.080 | 接近无偏 (绝对值小于 0.1) |
 | **R²** | 0.20 | **0.63** | **+216%** ✅ 🎉 |
 
 ### 关键洞察
 
 > **R² 0.20 → 0.63** = GBM 真正学到了 cost_per_m2 的结构性模式 (R² > 0.5 是"统计学意义"门槛)。
 > **MAE 砍半 (0.60→0.33)** = 单点预测精度质的提升。
-> MAPE 改善小 (-2.2pp) 但 MAE/R² 巨变 = GBM 在分布尾部 (outlier) 表现远好于 median。
+> MAPE 改善小 (-3.1pp) 但 MAE/R² 巨变 = GBM 在分布尾部 (outlier) 表现远好于 median。
 
 ### Production 集成路径 (未来)
 
@@ -343,7 +349,7 @@ flute 分布: EB 35 / BC 8 / 单E瓦 2
 
 ```bash
 python3 train_gbm.py    # 5-fold CV + 保存 models/gbm_cpm.pkl
-# 输出: R² 0.6269, MAE 0.3287, MAPE 27.9%
+# 输出: R² 0.6299, MAE 0.3310, MAPE 27.3%
 ```
 
 模型文件 `models/gbm_cpm.pkl` (~50KB) 已入 repo，可直接加载 (无需重训)。
@@ -356,11 +362,11 @@ python3 train_gbm.py    # 5-fold CV + 保存 models/gbm_cpm.pkl
 |---|---|---|
 | 2026-05-17 | Initial EVAL_REPORT.md (n=43 material ¥/m² MAPE) | Eval-driven simulation revealed README's `±15% → ±8%` was estimated |
 | 2026-05-18 | **Data semantic audit + Phase B + Phase C** | 9 .xls × 22 rows ground truth → contract MAPE 41.3% → 17.1% (主流 12.6%) |
-| 2026-05-18 | **Phase D1 面纸精算 (克重 × ¥/吨)** | 17.1% → **14.5%** (主流 9.9% 🟢 工业级)，越过 < 15% 可用阈值 |
+| 2026-05-18 | **Phase D1 面纸精算 (克重 × ¥/吨)** | 17.1% → **15.1%** public-fixture 条件 MAPE（主流 9.9%），接近 15% 条件评估阈值 |
 | 2026-05-19 | Phase D4 `weekly_eval.py` drift monitor | System 7-piece-set 第 7 件完成 |
-| 2026-05-19 | **Phase D6 GBM baseline** (HistGradientBoosting) | R² 0.20 → **0.63** (+216%), MAE 0.60 → 0.33 (砍半), MAPE 30.1% → 27.9% |
+| 2026-05-19 | **Phase D6 GBM baseline** (HistGradientBoosting) | R² 0.20 → **0.63** (+216%), MAE 0.59 → 0.33 (砍半), MAPE 30.4% → 27.3% |
 | TBD | Phase D2: BC outlier 产品配置维度 (160g 耐破 + 涂层) | BC outlier 修复 |
-| TBD | Phase D5: 板材公式 blong/bshort 校准 | 需业务侧 L/W/H 数据补充 |
+| 2026-06-04 | Employee-confirmed sizing engine | 单页/双页、面纸/瓦楞拼版和单箱面积已拆分；仍需端到端 sizing eval |
 
 ---
 

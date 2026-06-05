@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Yiwei Cost Engine | AI Quotation System for Corrugated Box Manufacturing</title>
+  <meta name="description" content="Yiwei Cost Engine is an AI-assisted digital operations portfolio case for corrugated box manufacturing: quotation, order retrieval, evaluation, drift monitoring, and prepress quality review.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://yiwei-cost-engine.pages.dev/">
+  <meta property="og:title" content="Yiwei Cost Engine">
+  <meta property="og:description" content="AI-assisted quotation and operations workflow for a traditional packaging factory.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://yiwei-cost-engine.pages.dev/">
+  <meta name="twitter:card" content="summary_large_image">
+  <style>
+    :root {
+      --ink: #172026;
+      --muted: #5D6975;
+      --line: #DDE4EA;
+      --paper: #F6F8F5;
+      --surface: #FFFFFF;
+      --teal: #0F766E;
+      --blue: #245B8A;
+      --amber: #B7791F;
+      --red: #A43F3F;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      line-height: 1.55;
+    }
+
+    a { color: inherit; }
+
+    .wrap {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      background: rgba(246, 248, 245, 0.92);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      backdrop-filter: blur(12px);
+    }
+
+    nav {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      font-weight: 760;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+    }
+
+    .hero {
+      padding: 58px 0 30px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.04fr) minmax(360px, 0.96fr);
+      gap: 42px;
+      align-items: center;
+    }
+
+    .eyebrow {
+      color: var(--teal);
+      font-size: 13px;
+      font-weight: 780;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      font-size: clamp(38px, 6vw, 68px);
+      line-height: 1.02;
+      margin: 0 0 18px;
+      letter-spacing: 0;
+      max-width: 760px;
+    }
+
+    .lead {
+      font-size: 18px;
+      color: var(--muted);
+      max-width: 690px;
+      margin: 0 0 24px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 26px 0 22px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 0 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 720;
+      background: var(--surface);
+    }
+
+    .button.primary {
+      color: white;
+      background: var(--teal);
+      border-color: var(--teal);
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 14px;
+      margin: 0;
+    }
+
+    .screen {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 18px 42px rgba(28, 41, 53, 0.10);
+      overflow: hidden;
+    }
+
+    .screen-bar {
+      height: 40px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--line);
+      background: #EEF3F2;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #D66B61;
+    }
+
+    .dot:nth-child(2) { background: #D9A443; }
+    .dot:nth-child(3) { background: #58A879; }
+
+    .mock {
+      padding: 18px;
+    }
+
+    .mock-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .mock-title h2 {
+      margin: 0;
+      font-size: 21px;
+      letter-spacing: 0;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid #F0D49B;
+      border-radius: 999px;
+      padding: 4px 9px;
+      background: #FFF8E8;
+      color: #7A4B00;
+      font-size: 12px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .metric {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #FAFBFC;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 5px;
+    }
+
+    .metric strong {
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+
+    .workflow {
+      margin-top: 18px;
+      display: grid;
+      gap: 9px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 26px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: white;
+      font-size: 14px;
+    }
+
+    .num {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      color: white;
+      background: var(--blue);
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .tag {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    section {
+      padding: 42px 0;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 24px;
+      margin-bottom: 20px;
+    }
+
+    h2 {
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1.08;
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    .section-head p {
+      color: var(--muted);
+      margin: 0;
+      max-width: 470px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    .card p {
+      color: var(--muted);
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .proof {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .proof-row {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 14px;
+      padding: 14px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .proof-row strong {
+      color: var(--ink);
+    }
+
+    .proof-row span {
+      color: var(--muted);
+    }
+
+    .caution {
+      border-left: 4px solid var(--amber);
+      padding: 14px 16px;
+      background: #FFF8E8;
+      border-radius: 0 8px 8px 0;
+      color: #5F4311;
+    }
+
+    footer {
+      padding: 34px 0;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 860px) {
+      nav { height: auto; padding: 14px 0; align-items: start; }
+      .nav-links { display: none; }
+      .hero { padding-top: 34px; }
+      .hero-grid, .proof { grid-template-columns: 1fr; }
+      .cards { grid-template-columns: 1fr; }
+      .section-head { display: block; }
+      .section-head p { margin-top: 10px; }
+      .proof-row { grid-template-columns: 1fr; gap: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="wrap">
+      <div class="brand">Yiwei Cost Engine</div>
+      <div class="nav-links">
+        <a href="#workflow">Workflow</a>
+        <a href="#evidence">Evidence</a>
+        <a href="https://github.com/wwwaaarrthur/yiwei-cost-engine">GitHub</a>
+        <a href="https://yiwei-cost-engine.streamlit.app">Live Demo</a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <div class="eyebrow">Manufacturing Digital Transformation</div>
+          <h1>AI quotation and operations workflow for corrugated box manufacturing.</h1>
+          <p class="lead">
+            Yiwei Cost Engine turns legacy packaging work orders into an auditable operating system:
+            cost estimation, historical order retrieval, model evaluation, drift monitoring, procurement risk,
+            and prepress quality review.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="https://yiwei-cost-engine.streamlit.app">Open Live Demo</a>
+            <a class="button" href="https://github.com/wwwaaarrthur/yiwei-cost-engine">View GitHub Repo</a>
+          </div>
+          <p class="note">
+            Public demo data is anonymized. If the Streamlit app asks for login, the app sharing setting needs
+            to be switched to public in Streamlit Community Cloud.
+          </p>
+        </div>
+
+        <div class="screen" aria-label="Yiwei Cost Engine workflow preview">
+          <div class="screen-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+          <div class="mock">
+            <div class="mock-title">
+              <h2>毅伟包装成本运营台</h2>
+              <span class="pill">PUBLIC DEMO</span>
+            </div>
+            <div class="metrics">
+              <div class="metric"><span>Anonymized work orders</span><strong>2,155</strong></div>
+              <div class="metric"><span>Precheck cost records</span><strong>44</strong></div>
+              <div class="metric"><span>Conditional MAPE</span><strong>15.1%</strong></div>
+              <div class="metric"><span>EB segment MAPE</span><strong>9.9%</strong></div>
+            </div>
+            <div class="workflow">
+              <div class="step"><span class="num">1</span><strong>Quote workbench</strong><span class="tag">cost split</span></div>
+              <div class="step"><span class="num">2</span><strong>Order retrieval</strong><span class="tag">history</span></div>
+              <div class="step"><span class="num">3</span><strong>Model evaluation</strong><span class="tag">quality</span></div>
+              <div class="step"><span class="num">4</span><strong>Prepress review</strong><span class="tag">risk gate</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="workflow">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Built for operating judgment, not a model demo.</h2>
+          <p>The app separates business workflow, pricing logic, privacy hygiene, and evaluation so each claim can be inspected.</p>
+        </div>
+        <div class="cards">
+          <article class="card">
+            <h3>Quote</h3>
+            <p>Estimate box cost from size, flute type, paper parameters, imposition mode, quantity, and customer tier.</p>
+          </article>
+          <article class="card">
+            <h3>Evaluate</h3>
+            <p>Track conditional contract-price error and expose segment failures instead of hiding behind one metric.</p>
+          </article>
+          <article class="card">
+            <h3>Control Risk</h3>
+            <p>Extend the same workflow logic into procurement tolerance review and prepress proof verification.</p>
+          </article>
+          <article class="card">
+            <h3>Govern Data</h3>
+            <p>Public demo shows anonymized workflow and aggregate evidence; real orders, identities, and internal pricing stay private.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Public by design, not public by accident.</h2>
+          <p>The release model separates inspectable product capability from factory-sensitive business evidence.</p>
+        </div>
+        <div class="cards">
+          <article class="card">
+            <h3>Searchable Entry</h3>
+            <p>Cloudflare Pages hosts the public portfolio page for recruiters and search engines.</p>
+          </article>
+          <article class="card">
+            <h3>Anonymized Demo</h3>
+            <p>Streamlit runs with demo data, generalized row labels, and no full dataset export.</p>
+          </article>
+          <article class="card">
+            <h3>Reviewable Code</h3>
+            <p>GitHub exposes implementation, tests, evaluation logic, and deployment caveats.</p>
+          </article>
+          <article class="card">
+            <h3>Private Evidence</h3>
+            <p>Raw work orders, real names, staff feedback, and UAT notes remain interview discussion material.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="evidence">
+      <div class="wrap proof">
+        <div>
+          <h2>Evidence recruiters can inspect.</h2>
+          <p class="lead">
+            The public repository includes the Streamlit app, anonymized demo database, evaluation report,
+            drift monitor, sizing rules, and portfolio evidence map.
+          </p>
+        </div>
+        <div>
+          <div class="proof-row">
+            <strong>Digital transformation</strong>
+            <span>2,155 anonymized work-order rows extracted from legacy production documents.</span>
+          </div>
+          <div class="proof-row">
+            <strong>AI evaluation</strong>
+            <span>Loader, predictor, metrics, breakdown, regression, contract eval, and drift monitor.</span>
+          </div>
+          <div class="proof-row">
+            <strong>Privacy design</strong>
+            <span>Public demo database is separated from private factory data and anonymization mappings.</span>
+          </div>
+          <div class="proof-row">
+            <strong>Business caveat</strong>
+            <span>15.1% MAPE is conditional on known material area; it is not claimed as end-to-end sizing accuracy.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <div class="caution">
+          中文摘要：这个项目不是“做了一个 AI 小网页”，而是把传统纸箱厂的经验报价、历史订单、模型评估、
+          漂移监控、采购风险和印前核稿串成可验证的数字化运营案例。
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      Built for Digital Operations / Digital Transformation interviews. Public demo uses anonymized data only.
+    </div>
+  </footer>
+</body>
+</html>

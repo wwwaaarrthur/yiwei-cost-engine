@@ -7,7 +7,7 @@
 ╚══════════════════════════════════════════════════════════╝
 
 数据源:
-  - data/demo.db.precheck_costs (n=43)  + data/ground_truth_22rows.csv (n=22, 部分重叠去重)
+  - data/demo.db.precheck_costs (44 rows, 43 valid material-cost rows) + data/ground_truth_22rows.csv (n=22, 部分重叠去重)
 
 特征:
   - area_m2 (板材面积)
@@ -61,7 +61,7 @@ def extract_total_gram(material):
 def is_export(file_name):
     if not file_name:
         return 0
-    return 1 if ('外贸' in file_name or '加纳' in file_name) else 0
+    return 1 if ('外贸' in file_name or '出口' in file_name) else 0
 
 
 def featurize(area_m2, qty, flute, total_gram, has_lam, is_exp):
@@ -79,7 +79,7 @@ FEATURE_NAMES = ['area_m2', 'log_qty', 'flute', 'total_gram', 'has_lam', 'is_exp
 
 
 def load_training_data():
-    """合并 demo.db.precheck_costs (n=43) + ground_truth_22rows.csv (n=22, 去重)"""
+    """合并 demo.db.precheck_costs + ground_truth_22rows.csv (n=22, 去重)"""
     rows = []
     seen = set()
 

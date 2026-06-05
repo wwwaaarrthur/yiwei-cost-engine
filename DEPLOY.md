@@ -11,6 +11,9 @@
 - ✅ `app.py` — the Streamlit entrypoint
 - ✅ `data/demo.db` — anonymized public data, ~1MB (under 100MB limit)
 - ✅ `.gitignore` — excludes `.venv/`, `data/process_sheets.db`, `.streamlit/secrets.toml`
+- ✅ Public mode — Streamlit Cloud loads `data/demo.db` because the real DB is not committed
+- ✅ Public UI guardrail — `public_view.py` generalizes public-mode row labels and hides row-level cost export
+- ✅ Public release policy — `docs/PUBLIC_RELEASE_POLICY.md`
 - ✅ Public GitHub repo: `https://github.com/wwwaaarrthur/yiwei-cost-engine`
 
 ---
@@ -73,11 +76,38 @@ Common issues and fixes:
 ## Step 5 · Verify and Capture the URL
 
 1. Click the live URL (e.g. `https://yiwei-cost-engine.streamlit.app`)
-2. Test the 3 main tabs:
-   - 🏠 **首页报价**: Enter sample params, verify a quote comes back
-   - 🔍 **订单查找**: Search a sample order
-   - ⚙️ **高级分析**: All 5 sub-tabs render
-3. Open the app on mobile (Streamlit is responsive) — confirm it works there too
+2. Confirm the app is public:
+   - Open an incognito/private browser window
+   - Visit `https://yiwei-cost-engine.streamlit.app`
+   - Expected: the app or wake-up screen loads without Streamlit login
+   - Failure signal: redirect to `share.streamlit.io/-/auth/app` or `/-/login`
+3. In **App settings → Sharing**, choose **This app is public and searchable**
+4. Test the 3 main tabs:
+   - **报价台**: Enter sample params, verify a quote comes back
+   - **订单搜索**: Search a sample order
+   - **模型评估**: All 5 sub-tabs render
+5. Confirm the public-data guardrails:
+   - Sidebar shows **PUBLIC DEMO**
+   - Product/material/file/note fields are generalized
+   - Row-level cost and contract-price tables are hidden
+   - Full CSV export is disabled
+6. Open the app on mobile (Streamlit is responsive) — confirm it works there too
+
+For internal staff lookup, do not use Streamlit Community Cloud. Run `YIWEI_APP_MODE=internal` on a factory LAN host or place it behind VPN / Cloudflare Access. See [`docs/DEPLOYMENT_MODES.md`](docs/DEPLOYMENT_MODES.md).
+
+---
+
+## Step 5.5 · Optional Cloudflare Pages Entry Page
+
+For a searchable portfolio URL, deploy the static entry page in [`site/`](site/):
+
+| Cloudflare Pages setting | Value |
+|---|---|
+| Framework preset | None |
+| Build command | Leave blank |
+| Build output directory | `site` |
+
+This page is not a replacement for Streamlit. It is a stable recruiter/search entry page that links to the live Streamlit demo and GitHub repo.
 
 ---
 
