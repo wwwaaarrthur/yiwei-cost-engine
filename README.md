@@ -1,7 +1,7 @@
 # Yiwei Cost Engine
 
-> **AI-powered cost estimation system for corrugated box manufacturing.**
-> End-to-end digital operations case: legacy work-order extraction → cost model → evaluation harness → drift monitor → Streamlit operating app.
+> **A digital-transformation case study: turning a 10-year-old factory's tacit pricing knowledge into a verifiable, auditable, AI-evaluated system.**
+> Not a model demo — a product-judgment record. Built and decided end-to-end by one person acting as the AI Product Manager, not the algorithm engineer.
 
 [![Built with Streamlit](https://img.shields.io/badge/Built%20with-Streamlit-FF4B4B?logo=streamlit)](https://streamlit.io)
 [![Python 3.14](https://img.shields.io/badge/Python-3.14-blue?logo=python)](https://www.python.org)
@@ -9,52 +9,87 @@
 
 [**🚀 Live Demo · yiwei-cost-engine.streamlit.app**](https://yiwei-cost-engine.streamlit.app)
 
-> Streamlit Cloud may show a sleep screen on first open. Click "wake up" and wait about 30-60 seconds. If it redirects to a Streamlit login page, the app sharing setting must be changed to **public and searchable**.
+---
 
-For a search-friendly portfolio landing page, see [`site/`](site/). It is designed for Cloudflare Pages and links to the Streamlit demo.
+## For Recruiters / Interviewers — the 60-second version
 
-Public-release policy: see [`docs/PUBLIC_RELEASE_POLICY.md`](docs/PUBLIC_RELEASE_POLICY.md). The intended model is a public portfolio entry page + public anonymized Streamlit demo + private raw evidence pack.
+This project demonstrates **AI Product Management / Digital Transformation judgment**, not model training. The thing I am most proud of is **not** an accuracy number — it is the **evaluation system** that makes every pricing decision measurable, auditable, and safe to iterate. Two product decisions define it:
+
+1. **I built a 7-piece evaluation harness** for a real product (the part most AI side-projects skip). See it first, below.
+2. **I deliberately did NOT let an LLM set prices.** Contract amounts need auditability and zero hallucination, so pricing stays deterministic. AI is used where uncertainty is real — explanation, risk review, missing-info detection — never for the final price. Knowing *when not to use AI* is the judgment this project is really about.
+
+Deep-dive paths: [the eval system](#-ai-evaluation-system-what-i-built-as-the-pm) · [why pricing avoids an LLM](#-the-pm-judgment-why-pricing-does-not-use-an-llm) · [EVAL_REPORT.md](EVAL_REPORT.md) · [NORTH_STAR_PROOF_MAP.md](docs/NORTH_STAR_PROOF_MAP.md)
 
 ---
 
-## For Recruiters / Interviewers
+## 🧪 AI Evaluation System (what I built as the PM)
 
-Start here if you have 5 minutes:
+> Industry consensus in 2026 (Sequoia AI Ascent; Gartner reporting ~85% of GenAI projects fail on poor data/testing): the bottleneck has shifted from building models to **proving they work**. This harness is that proof. *I defined and owned it as the product manager; implementation is the easy part.*
 
-1. Open the [live demo](https://yiwei-cost-engine.streamlit.app) and try the **首页报价** tab.
-2. Read [EVAL_REPORT.md](EVAL_REPORT.md) §7-9 for the current business-facing evaluation results.
-3. Read [docs/NORTH_STAR_PROOF_MAP.md](docs/NORTH_STAR_PROOF_MAP.md) for the interview evidence map.
-4. Read [docs/PROCUREMENT_CASE_WOVEN_BAG.md](docs/PROCUREMENT_CASE_WOVEN_BAG.md) for the procurement risk case.
+A **7-piece evaluation pipeline** — the part that separates this from a "demo with vibes." Run `python3 eval_runner.py` to reproduce the headline results below (deterministic, no random seed).
 
-The project is designed to demonstrate **Digital Transformation / AI Product Management judgment**, not just model training.
+| # | Module | What it proves | Real result |
+|---|--------|----------------|-------------|
+| 1 | **Loader** | Ground truth is real and bounded | 44 precheck records; 43 valid material-cost rows; 22 contract rows (17 with contract price) |
+| 2 | **Predictor** | Pricing logic is explicit & interpretable | Flute-stratified median pricing (auditable by senior workers) |
+| 3 | **Metrics** | Quality is measured, not claimed | MAE / MAPE / Bias / R² on every run |
+| 4 | **Breakdown** | Aggregate metrics don't hide subset failures | Surfaced **BC flute 49.1% MAPE** (material-cost breakdown, n=9) as a named failure mode with a root-cause hypothesis |
+| 5 | **Regression** | "Improvements" don't silently break other things | Caught a real trade-off: MAPE −10.8pp **but** Bias degraded −0.05→−0.20 — flagged before shipping |
+| 6 | **ContractEval** | Model is tested against business reality | Contract-price MAPE **41.3% → 14.3%** overall (n=17); **9.9%** on mainstream EB domestic (n=15) — both reproducible via `eval_runner.py` |
+| 7 | **DriftMonitor** | Quality is monitored over time | `weekly_eval.py` flags ≥5pp drift; CI-friendly exit codes (0/1/2); JSONL history |
+
+**Three things this proves about how I work:**
+
+- **I measure quality where it's hard.** A `Regression` module that defends *all four* metrics simultaneously is the difference between "MAPE went down, ship it" and "MAPE went down but we're now quietly losing margin on every quote." (See [EVAL_REPORT.md §3](EVAL_REPORT.md).)
+- **I do error analysis myself, not delegate it.** The `Breakdown` module isolated BC-flute underestimation; a separate **data-semantic audit** caught that the field I was scoring (`material ¥/m²`) was *not* the customer's contract price — a data-meaning bug that would have invalidated the whole eval. Finding that is PM work.
+- **I report honestly.** R² ≈ 0.18 for the interpretable baseline is disclosed, not hidden behind a marketing accuracy claim. All metrics are **conditional on known material area** and do not yet measure end-to-end sizing — stated plainly.
+
+> 🖼️ *Draft note for Yi: this section is strongest with one screenshot of `eval_runner.py` output or the drift report. I can generate a clean run and embed it — say the word.*
+
+---
+
+## 🎯 The PM Judgment: Why Pricing Does NOT Use an LLM
+
+The most common AI-PM mistake in 2026 is forcing an LLM into a workflow that shouldn't have one. I made the opposite call, on purpose:
+
+- **Pricing is deterministic** because factory contract amounts require an audit trail, reproducibility, and zero hallucination. A senior worker (or an auditor) can trace exactly why a number came out.
+- **AI is used only where uncertainty is genuine** — explaining the quote, flagging risky segments (e.g. BC export outliers), detecting missing inputs, and drafting a human-review note.
+- **The final price stays rule-and-human-owned.** No black-box model decides money.
+
+> **Interview line:** *"A fresh bootcamp grad bolts an LLM onto everything. A real PM knows when not to. I split the system on purpose — deterministic, auditable pricing; AI as a second pair of eyes for review and explanation. That's a risk-and-governance decision, not a capability gap."*
+
+The AI review layer itself is architected (a 3-role advisor, below) and is on the roadmap to run on a real model **with its own eval** — see [Roadmap](#roadmap). Until that evidence exists, this README does not claim it; that restraint is the point.
+
+---
+
+## The 5 Production Checkpoints
+
+Every senior reviewer knows these five words. This project covers them — here's where:
+
+| Checkpoint | Status | Where |
+|---|:--:|---|
+| **Data** | ✅ | 2,222 legacy `.docx` work orders → `python-docx` extraction → **2,155 anonymized rows** in SQLite; data-semantic audit |
+| **Guardrails** | ✅ | Deterministic pricing (not LLM); 4-layer anonymization; public/internal mode that fails closed |
+| **Evaluation** | ✅ | The 7-piece harness above |
+| **Deploy** | ✅ | Live on Streamlit Cloud (anonymized demo DB) |
+| **Monitor** | ✅ | `weekly_eval.py` drift monitor; CI/cron exit codes |
+| *Access control* | 🔲 | On roadmap (noted honestly, not claimed) |
+
+---
 
 ## The Problem
 
-A traditional packaging factory quotes prices entirely from senior workers' tacit knowledge. The same order quoted by different workers shows significant variance because pricing depends on material gauge variation, machine state, and individual hand-feel — there is no documented formula. Quote latency is high (~30 minutes per order), the know-how is non-transferable, and there is no way to audit or improve pricing decisions systematically.
+A traditional packaging factory quotes prices entirely from senior workers' tacit knowledge. The same order quoted by different workers varies significantly — pricing depends on material gauge, machine state, and individual hand-feel, with no documented formula. Quote latency is high (~30 min/order), the know-how is non-transferable, and there is no way to audit or improve pricing systematically.
 
 ## The Solution
 
-A digital quotation and quality-control workflow built from **2,155 anonymized historical work orders** and **44 precheck cost records**, wrapped in a reproducible evaluation and monitoring layer.
+A digital quotation and quality-control workflow built from **2,155 anonymized historical work orders** and **44 precheck cost records**, wrapped in the reproducible evaluation + monitoring layer above.
 
-- **Quote latency**: manual quoting is roughly 30 minutes; the 30-second workflow claim is pending a timed public-demo run
-- **Current conditional contract-price eval**: MAPE **15.1%** overall on the public anonymized fixture; it assumes precheck material area is already known and does not measure sizing accuracy. Mainstream EB domestic orders are **9.9%** on n=15 rows from one major customer, not yet a cross-customer generalization claim
-- **Monitoring**: `weekly_eval.py` detects ≥5pp metric drift and exits non-zero for CI/cron use
-- **Failure mode surfaced**: BC export outliers remain high-error (MAPE 48.9%) — the next iteration is product-configuration features, not blind retuning
-- **Procurement extension**: a real woven-bag purchasing case turns contract tolerance, entity mismatch, and negotiation risk into AI-assisted review tasks
-
-> The point is not to claim a specific accuracy number — it is to build the **eval scaffolding** that makes model iteration safe, auditable, and decision-grounded. Honest measurement and trade-off articulation matter more than headline metrics.
-
-## What's Inside
-
-| Component | What it demonstrates |
-|---|---|
-| **7-piece eval system** (`eval_runner.py`, `weekly_eval.py`) | Loader / Predictor / Metrics / Breakdown / Regression / ContractEval / DriftMonitor. See [EVAL_REPORT.md](EVAL_REPORT.md). |
-| **Multi-Agent advisor** (`agents/`) | 3-role collaboration (Intelligence → Analysis → Critic) with mock-first design and graceful LLM degradation. See [agents/README.md](agents/README.md). |
-| **Privacy-by-design anonymization** (`anonymize.py`) | 4-layer mapping (CLIENT / SUPPLIER / BRAND / SENSITIVE_TOKENS) + `--verify` subcommand + JSON mapping isolation (gitignored). |
-| **Public demo guardrail** (`public_view.py`) | Generalizes public-mode customer/product/material/file/note display fields and hides row-level cost export. |
-| **Streamlit operating app** (`app.py`) | 5 tabs: quote, order search, advanced analysis, AI advisor, and prepress proof verification. |
-| **Employee-confirmed sizing engine** (`sizing_engine.py`) | Separates forming mode, face-paper imposition, corrugated imposition, piece counts, and per-carton material area. |
-| **Procurement case study** (`docs/PROCUREMENT_CASE_WOVEN_BAG.md`) | Shows how the same system thinking protects cost before and after quotation. |
+- **Current conditional contract-price eval:** MAPE **14.3%** overall (n=17) on the public anonymized fixture; **9.9%** on mainstream EB domestic orders (n=15, one major customer — not yet a cross-customer claim). Both segments reproduce via `eval_runner.py`. Assumes known material area; does not measure sizing accuracy.
+- **Path to end-to-end (tacit → explicit):** the material-area input above used to be an approximation. I obtained the actual hand-written cutting-size formula from a senior worker and engineered it into `sizing_engine.py`, so the approximation can be replaced with a real, auditable area calculation. *Status: formula captured ✅; wiring it into the eval and validating it against independent cutting records is on the roadmap — so this README does not yet claim end-to-end accuracy.*
+- **Named failure mode:** BC export outliers remain high-error (47.3% MAPE, n=2) — next iteration is product-configuration features, not blind retuning.
+- **Latency:** manual quoting ≈ 30 min; the 30-second-workflow claim is pending a timed public-demo run (stated as pending, not done).
+- **Procurement extension:** a real woven-bag purchasing case turns contract-tolerance, entity-mismatch, and negotiation risk into AI-assisted review tasks ([docs/PROCUREMENT_CASE_WOVEN_BAG.md](docs/PROCUREMENT_CASE_WOVEN_BAG.md)).
 
 ## Architecture
 
@@ -62,31 +97,31 @@ A digital quotation and quality-control workflow built from **2,155 anonymized h
 2,222 .docx work orders  →  python-docx extraction  →  2,155 anonymized rows  →  SQLite
                                                                                     ↓
                                                                         Feature Engineering
-                                                                       (15+ features:
-                                                                        flute type, board
-                                                                        weight, lamination,
-                                                                        die-cutting...)
+                                                                         (flute type, board
+                                                                          weight, lamination,
+                                                                          die-cutting, 15+)
                                                                                     ↓
-                                                                            Predictor
-                                                                       (flute-stratified
-                                                                        median pricing)
-                                                                                   ↓
+                                                              Deterministic Predictor (rules)
+                                                              + experimental GBM baseline (offline)
+                                                                                    ↓
                                                                        Streamlit Web UI
-                                                                       (5 workflow tabs:
-                                                                        quote / search /
-                                                                        advanced analysis /
-                                                                        AI advisor /
-                                                                        prepress QA)
+                                                              (quote / search / advanced analysis /
+                                                               AI advisor / prepress QA)
                                                                                     ↓
-                                                                       Evaluation Harness
-                                                                       (eval_runner.py:
-                                                                        Loader → Predictor
-                                                                        → Metrics →
-                                                                        Breakdown →
-                                                                        Regression →
-                                                                        ContractEval →
-                                                                        DriftMonitor)
+                                                              Evaluation Harness (7-piece)
+                                                              Loader→Predictor→Metrics→Breakdown
+                                                              →Regression→ContractEval→DriftMonitor
 ```
+
+## Multi-Agent Advisor (`agents/`) — architecture today, evidence next
+
+A **3-role collaboration** (Intelligence → Analysis → Critic) with deliberate engineering trade-offs:
+
+- **3 roles, not 5** — each extra agent multiplies failure surface; 3 is the minimum to show separation of concerns + a quality gate.
+- **Heterogeneous degradation** — when a real LLM call fails, it drops to a mock instead of retrying the same provider.
+- **Surfaced intermediate artifacts** — the UI shows every agent's output, not just the final answer (debuggable, not black-box).
+
+> **Honest status:** the advisor ships **mock-first** (deterministic heuristics) with a real-LLM path as an optional toggle. The next phase (see Roadmap) takes the `Critic` role real on a hosted model **and puts its outputs under the same eval discipline as the pricing formula** — risk-recall + hallucination rate, ground-truthed against historical cost-deviation cases. Until that eval exists, no "AI-powered review" claim is made.
 
 ## Quick Start
 
@@ -95,114 +130,32 @@ git clone https://github.com/wwwaaarrthur/yiwei-cost-engine.git
 cd yiwei-cost-engine
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-YIWEI_APP_MODE=public python3 -m streamlit run app.py
-```
-
-Open `http://localhost:8501`. The bundled `data/demo.db` (anonymized) loads automatically.
-
-For factory staff, run the internal version with a real database outside git:
-
-```bash
-YIWEI_APP_MODE=internal YIWEI_DB_PATH=/private/path/process_sheets.db python3 -m streamlit run app.py
-```
-
-See [`docs/DEPLOYMENT_MODES.md`](docs/DEPLOYMENT_MODES.md) for the public/internal/auto mode contract.
-
-## Evaluation Harness (`eval_runner.py`)
-
-A seven-piece evaluation system — the part that separates this from a "demo with vibes":
-
-| Module | Purpose |
-|--------|---------|
-| **Loader** | Loads 44 precheck records; 43 valid material-cost rows currently enter the early eval |
-| **Predictor** | Runs flute-stratified median pricing logic |
-| **Metrics** | Computes MAE / MAPE / Bias / R² |
-| **Breakdown** | Stratifies error by flute type (BC vs EB) to surface root causes |
-| **Regression** | Compares before/after parameter changes — guards against "MAPE improves while Bias quietly deteriorates" (see [EVAL_REPORT.md §3](EVAL_REPORT.md) for a real captured trade-off) |
-| **ContractEval** | Evaluates the business-facing quote formula against 22 anonymized spreadsheet rows |
-| **DriftMonitor** | Runs weekly metric comparison and flags ≥5pp drift |
-
-Current safe headline: **conditional contract-price MAPE 15.1% overall / 9.9% on EB domestic mainstream orders from n=15 rows for one major customer**. These metrics assume provided material area and do not measure end-to-end sizing accuracy. The earlier 39% → 28.2% result is retained as the material-cost baseline history, not the main business claim.
-
-## Tech Stack
-
-- **Frontend**: Streamlit + Plotly (interactive dashboards)
-- **Backend**: Python 3.14, Pandas, SQLite
-- **Data extraction**: python-docx (parsing irregular legacy `.docx` work orders)
-- **Evaluation**: Custom eval harness (`eval_runner.py`) with contract-price eval
-- **Monitoring**: JSONL eval history + CI/cron-friendly drift exit codes (`weekly_eval.py`)
-
-## Project Structure
-
-```
-yiwei-cost-engine/
-├── app.py                  # Streamlit application (5 workflow tabs)
-├── sizing_engine.py        # Employee-confirmed forming/imposition/material-area rules
-├── db_config.py            # public/internal/auto database mode resolver
-├── eval_runner.py          # Evaluation harness (material-cost + contract-price eval)
-├── weekly_eval.py          # Drift monitor (JSONL history + CI-friendly exit codes)
-├── train_gbm.py            # Experimental GBM baseline (R² 0.20 → 0.63)
-├── extract_data.py         # .docx → SQLite pipeline (v1)
-├── extract_data_v2.py      # .docx → SQLite pipeline (v2, cell-position parser)
-├── anonymize.py            # Production DB → anonymized demo DB
-├── requirements.txt        # Pinned dependencies for Streamlit Cloud
-├── EVAL_REPORT.md          # Real eval results + failure analysis
-├── DEPLOY.md               # Streamlit Cloud deployment guide
-├── docs/
-│   ├── NORTH_STAR_PROOF_MAP.md
-│   ├── CARTON_SIZING_KNOWLEDGE_BASE.md
-│   ├── DEPLOYMENT_MODES.md
-│   ├── PROCUREMENT_CASE_WOVEN_BAG.md
-│   └── YIWEI_LEARNING_DELTA.md
-├── data/
-│   ├── demo.db             # Anonymized demo (2,155 work orders + 44 precheck records)
-│   ├── ground_truth_22rows.csv
-│   └── prepress_reports/
-├── tests/
-│   ├── test_sizing_engine.py
-│   └── test_eval_runner.py
-└── README.md
+YIWEI_APP_MODE=public python3 -m streamlit run app.py     # opens http://localhost:8501
+python3 eval_runner.py                                     # reproduce the eval numbers above
 ```
 
 ## Data Privacy
 
-- `data/demo.db` is **fully anonymized** — real client and supplier names are replaced via `anonymize.py` with role-based labels (e.g. `大型农化客户A`)
-- `public_view.py` adds a second UI-level guardrail: public mode generalizes visible product/material/file/note fields and hides row-level cost/contract tables plus full CSV export
-- Production `data/process_sheets.db` is **never committed** (excluded in `.gitignore`)
-- `YIWEI_APP_MODE=public` forces the demo DB; `YIWEI_APP_MODE=internal` fails closed if a real DB is missing
-- Latest local anonymization verification: `0 sensitive token residue` in `data/demo.db`
-- Raw evidence, real customer identities, staff feedback, and UAT notes stay private; see [`docs/PUBLIC_RELEASE_POLICY.md`](docs/PUBLIC_RELEASE_POLICY.md)
+- `data/demo.db` is **fully anonymized** — real client/supplier names replaced with role labels (e.g. `大型农化客户A`) via `anonymize.py` (4-layer mapping + `--verify`).
+- `public_view.py` adds a UI-level guardrail; production `data/process_sheets.db` is never committed.
+- Latest local verification: **0 sensitive-token residue** in `data/demo.db`. Raw evidence, real identities, and UAT notes stay private.
 
 ## Roadmap
 
-Done:
+Done: live Streamlit demo · contract-price eval 41.3%→14.3% (reproducible) · EB domestic 9.9% · employee-confirmed sizing engine · regression + drift monitors · GBM baseline experiment (R² 0.20→0.63, offline) · prepress proof verifier.
 
-- [x] Streamlit Cloud public demo
-- [x] Contract-price eval: 41.3% → 15.1% MAPE on the public anonymized fixture
-- [x] Mainstream EB domestic segment: 9.9% MAPE
-- [x] Employee-confirmed sizing engine: separate forming / face imposition / corrugated imposition
-- [x] Regression tests for `YW26-06-01`, `YW26-06-02`, and a historical double-pairing case
-- [x] `weekly_eval.py` drift monitor
-- [x] GBM baseline experiment: R² 0.20 → 0.63
-- [x] Prepress proof verifier tab
+Highest-ROI next:
 
-Highest-ROI next steps:
+- [ ] **P1 — Take the `Critic` advisor real + give its LLM outputs a dedicated eval** (risk-recall + hallucination rate, human-anchored labels, trace table with model/version/cost/latency). This is the move that makes the AI layer *load-bearing with evidence*.
+- [ ] **Wire the frontline cutting-size formula into the eval.** The senior-worker formula is captured in `sizing_engine.py` ✅; next: replace the known-area approximation in `eval_runner.py`, validate the formula against independent cutting records (accuracy, not just formula-alignment), then report end-to-end quote accuracy instead of the area-conditional 14.3%.
+- [ ] Add product-configuration features for BC export outliers.
+- [ ] Time one live quote flow to verify/qualify the 30min→30s latency claim.
+- [ ] Add one anonymized UAT / stakeholder-feedback artifact.
 
-- [ ] Validate corrugated double-pairing direction/reduction with one employee-confirmed work order
-- [ ] Build end-to-end sizing accuracy evaluation; current 15.1% MAPE is conditional on known material area
-- [ ] Persist order-level standard, compression/stacking requirements, and acceptance-result fields
-- [ ] Time one live quote flow to verify or qualify the 30min → 30s latency claim
-- [ ] Add one anonymized UAT / stakeholder feedback artifact
-- [ ] Add product-configuration features for BC export outliers
-- [ ] Merge the procurement case into the app as a visible submodule
-- [ ] Add bilingual reviewer summary (English / 中文) after the interview story is fully stable
-
----
+> On GBM: a gradient-boosted baseline reaches R² 0.63 offline, but it is **deliberately not shipped** into pricing at n=45 — productionizing a model on that little data would be a judgment failure, not a feature. It stays an evaluated experiment until data and business risk justify it.
 
 ## Background
 
-Built as an AI Product Manager / Digital Transformation portfolio project. Used as the flagship case study for "AI deployment in traditional manufacturing" — the intersection of operations workflow redesign, ML evaluation, privacy-safe deployment, and product judgment.
+Built as an AI Product Manager / Digital Transformation portfolio project — the flagship case for "AI deployment in traditional manufacturing": operations workflow redesign, ML evaluation, privacy-safe deployment, and the product judgment of where AI does and does not belong.
 
-> "I don't replace the senior workers. I turn their tacit knowledge into a verifiable, transferable system."
-
-For technical details, see [EVAL_REPORT.md](EVAL_REPORT.md) (real eval results, failure analysis, system thinking) and [DEPLOY.md](DEPLOY.md) (Streamlit Cloud deployment guide).
+> "I don't replace the senior workers. I turn their tacit knowledge into a verifiable, transferable, audited system."

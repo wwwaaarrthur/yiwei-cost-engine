@@ -245,7 +245,7 @@ def load_xls_ground_truth(csv_path):
                 'contract_price': f2('contract_price'),
                 'margin_pct': f2('margin_pct'),
                 # 输入特征 (从 .xls 推断, 模拟 app.py UI 输入)
-                'order_type': '出口' if '4L外贸' in r['file'] else '内销',
+                'order_type': '出口' if ('外贸' in r['file'] or '出口' in r['file']) else '内销',
                 'has_lam': bool(film_unit and film_unit > 0),
                 'has_pad': bool(pad_total and pad_total > 0),
                 'print_colors': infer_print_colors(print_unit),
@@ -272,6 +272,26 @@ def evaluate_xls_contract(xls_rows, tier='vip'):
         'cost': calculate_metrics(cost_preds, cost_acts) if cost_preds else None,
         'contract': calculate_metrics(contract_preds, contract_acts) if contract_preds else None,
     }
+
+
+def evaluate_contract_by_segment(xls_rows, tier='vip'):
+    """按 (flute × order_type) 分层评估合同价 MAPE。
+
+    暴露聚合 15.1% 掩盖的 segment 表现：EB 内销主流 vs BC 出口 outlier。
+    呼应 Breakdown 模块精神——聚合指标不能掩盖子集失败。
+    小样本组只报 MAPE/Bias/n（n 过小时 R² 无统计意义，不报）。
+    """
+    from collections import defaultdict
+    params = {'tier': tier}
+    seg = defaultdict(lambda: {'preds': [], 'acts': []})
+    for r in xls_rows:
+        if not r.get('area_m2') or not r.get('contract_price'):
+            continue
+        _, price_p, _ = predict_cost_full(r, params)
+        key = (r.get('flute', '?'), r.get('order_type', '?'))
+        seg[key]['preds'].append(price_p)
+        seg[key]['acts'].append(r['contract_price'])
+    return {k: calculate_metrics(d['preds'], d['acts']) for k, d in seg.items()}
 
 
 # ═══════════════════════════════════════════════════════════
@@ -493,6 +513,14 @@ if __name__ == '__main__':
                 print(f"  🟡 合同价 MAPE {m['mape']:.1f}% 一般")
             else:
                 print(f"  🔴 合同价 MAPE {m['mape']:.1f}% 需改善")
+
+        # 分层合同价 eval (flute × order_type) — 暴露聚合掩盖的 segment
+        seg = evaluate_contract_by_segment(xls_rows, tier='vip')
+        if seg:
+            print(f"\n  📊 合同价分层 (flute × order_type，按样本数排序):")
+            for (flute, otype), m in sorted(seg.items(), key=lambda kv: -kv[1]['n']):
+                tag = "🟢" if m['mape'] < 15 else ("🟡" if m['mape'] < 25 else "🔴")
+                print(f"    {tag} {flute} {otype} (n={m['n']}): MAPE {m['mape']:.1f}%  |  Bias {m['bias']:+.3f}")
     else:
         print(f"\n⚠️  Step 7 跳过 (csv 未找到: {csv_path})")
 
