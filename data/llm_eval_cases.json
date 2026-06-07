@@ -1,0 +1,72 @@
+[
+  {
+    "id": "case-01-bc-no-mape",
+    "query": "BC瓦防水纸箱报价, 5000只",
+    "context": {"price_range": {"p25": 2.0, "p50": 2.86, "p75": 3.4, "n": 9}, "flute_filter": "BC", "n_matches": 9, "warnings": []},
+    "draft": {"recommended_price_per_m2": 2.86, "rationale": "median of 9 precheck records", "trade_offs": ["p50 balances win-rate vs margin"], "risks": []},
+    "expected": {"must_flag_risk_keywords": ["BC", "MAPE"], "must_request_missing": ["lamination"], "expected_verdict": "revise", "must_not_claim": ["sets final price", "100%", "guaranteed"]}
+  },
+  {
+    "id": "case-02-below-p25-margin",
+    "query": "EB内销标准箱报价, 8000只",
+    "context": {"price_range": {"p25": 1.0, "p50": 1.15, "p75": 1.3, "n": 15}, "flute_filter": "EB", "n_matches": 15, "warnings": []},
+    "draft": {"recommended_price_per_m2": 0.75, "rationale": "aggressive to win deal", "trade_offs": ["win rate up"], "risks": []},
+    "expected": {"must_flag_risk_keywords": ["margin", "p25"], "must_request_missing": [], "expected_verdict": "revise", "must_not_claim": ["sets final price"]}
+  },
+  {
+    "id": "case-03-low-sample",
+    "query": "单E瓦小箱报价, 2000只",
+    "context": {"price_range": {"p25": 0.7, "p50": 0.83, "p75": 1.0, "n": 3}, "flute_filter": "单E瓦", "n_matches": 3, "warnings": ["low sample"]},
+    "draft": {"recommended_price_per_m2": 0.83, "rationale": "median of 3 precheck records", "trade_offs": ["limited data"], "risks": []},
+    "expected": {"must_flag_risk_keywords": ["sample", "data"], "must_request_missing": [], "expected_verdict": "revise", "must_not_claim": ["sets final price"]}
+  },
+  {
+    "id": "case-04-missing-lamination",
+    "query": "BC瓦出口纸箱报价(覆膜未知), 6000只",
+    "context": {"price_range": {"p25": 2.0, "p50": 2.86, "p75": 3.5, "n": 9}, "flute_filter": "BC", "n_matches": 9, "warnings": []},
+    "draft": {"recommended_price_per_m2": 2.86, "rationale": "median of BC precheck records", "trade_offs": ["standard quote"], "risks": []},
+    "expected": {"must_flag_risk_keywords": ["BC", "MAPE"], "must_request_missing": ["lamination", "覆膜"], "expected_verdict": "revise", "must_not_claim": ["sets final price"]}
+  },
+  {
+    "id": "case-05-loss-margin",
+    "query": "EB大单报价(低毛利), 30000只",
+    "context": {"price_range": {"p25": 1.0, "p50": 1.15, "p75": 1.3, "n": 15}, "flute_filter": "EB", "n_matches": 15, "warnings": ["margin below 5%"]},
+    "draft": {"recommended_price_per_m2": 1.0, "rationale": "volume discount for big order", "trade_offs": [], "risks": []},
+    "expected": {"must_flag_risk_keywords": ["margin", "trade-off"], "must_request_missing": [], "expected_verdict": "revise", "must_not_claim": ["sets final price"]}
+  },
+  {
+    "id": "case-06-clean-eb",
+    "query": "EB内销标准箱报价, 20000只",
+    "context": {"price_range": {"p25": 1.0, "p50": 1.15, "p75": 1.3, "n": 15}, "flute_filter": "EB", "n_matches": 15, "warnings": []},
+    "draft": {"recommended_price_per_m2": 1.15, "rationale": "median of 15 precheck records (EB domestic)", "trade_offs": ["p25 wins more deals but compresses margin ~13%"], "risks": [{"risk": "low margin if pulp price rises", "severity": "low", "mitigation": "monitor pulp index"}]},
+    "expected": {"must_flag_risk_keywords": [], "must_request_missing": [], "expected_verdict": "approve", "must_not_claim": ["sets final price"]}
+  },
+  {
+    "id": "case-07-above-p75-premium",
+    "query": "EB内销箱报价(高价), 5000只",
+    "context": {"price_range": {"p25": 1.0, "p50": 1.15, "p75": 1.3, "n": 15}, "flute_filter": "EB", "n_matches": 15, "warnings": []},
+    "draft": {"recommended_price_per_m2": 1.8, "rationale": "premium positioning", "trade_offs": ["higher margin but fewer wins"], "risks": []},
+    "expected": {"must_flag_risk_keywords": ["p75", "verify"], "must_request_missing": [], "expected_verdict": "revise", "must_not_claim": ["sets final price"]}
+  },
+  {
+    "id": "case-08-export-bc-outlier",
+    "query": "BC瓦4L外贸水剂箱报价, 2520只",
+    "context": {"price_range": {"p25": 2.0, "p50": 2.86, "p75": 3.5, "n": 9}, "flute_filter": "BC", "n_matches": 9, "warnings": ["export config outlier"]},
+    "draft": {"recommended_price_per_m2": 2.86, "rationale": "median of BC precheck records", "trade_offs": ["standard"], "risks": []},
+    "expected": {"must_flag_risk_keywords": ["BC", "MAPE", "export"], "must_request_missing": ["lamination"], "expected_verdict": "revise", "must_not_claim": ["sets final price"]}
+  },
+  {
+    "id": "case-09-no-data",
+    "query": "六角展示盒报价, 300只",
+    "context": {"price_range": {}, "flute_filter": "", "n_matches": 0, "warnings": ["no comparable orders"]},
+    "draft": {"recommended_price_per_m2": null, "rationale": "Cannot recommend: no comparable orders.", "trade_offs": [], "risks": [{"risk": "insufficient data", "severity": "high", "mitigation": "manual quote"}]},
+    "expected": {"must_flag_risk_keywords": ["data"], "must_request_missing": [], "expected_verdict": "reject", "must_not_claim": ["sets final price"]}
+  },
+  {
+    "id": "case-10-no-tradeoffs",
+    "query": "EB内销箱报价(无权衡), 10000只",
+    "context": {"price_range": {"p25": 1.0, "p50": 1.15, "p75": 1.3, "n": 15}, "flute_filter": "EB", "n_matches": 15, "warnings": []},
+    "draft": {"recommended_price_per_m2": 1.15, "rationale": "median, everything looks fine", "trade_offs": [], "risks": []},
+    "expected": {"must_flag_risk_keywords": ["trade-off"], "must_request_missing": [], "expected_verdict": "revise", "must_not_claim": ["sets final price"]}
+  }
+]
