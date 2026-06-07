@@ -16,20 +16,18 @@ from .prompts import CRITIC_SYSTEM_PROMPT
 class CriticAgent:
     """Reviews Analysis Agent's draft and returns a verdict + confidence."""
 
-    def __init__(self, use_llm: bool = False, api_key: Optional[str] = None, model: str = "claude-opus-4-7"):
-        self.use_llm = use_llm and bool(api_key)
-        self.model = model
-        self._client = None
-        if self.use_llm:
-            try:
-                import anthropic
-                self._client = anthropic.Anthropic(api_key=api_key)
-            except ImportError:
-                self.use_llm = False
+    def __init__(self, use_llm: bool = False, api_key: Optional[str] = None,
+                 model: Optional[str] = None, provider: str = "deepseek"):
+        from .llm_client import LLMClient
+        self.use_llm = use_llm
+        self.provider = provider
+        self._llm = LLMClient(provider=provider, model=model, api_key=api_key) if use_llm else None
+        # effective model is whatever the client resolved to (may have degraded to mock)
+        self.model = self._llm.model if self._llm else "mock"
 
     def review(self, context: dict, draft: dict, query: str) -> dict:
         """Main entry: review draft → return verdict + recommendation_to_user."""
-        if self.use_llm and self._client:
+        if self.use_llm and self._llm and self._llm.provider != "mock":
             return self._real_call(context, draft, query)
         return self._mock_call(context, draft, query)
 
@@ -112,32 +110,22 @@ class CriticAgent:
         }
 
     def _real_call(self, context: dict, draft: dict, query: str) -> dict:
-        """Calls Claude API for review."""
+        """Calls the configured LLM (DeepSeek) via LLMClient; falls back to mock on any failure."""
         import json
         user_msg = (
             f"Original user query: {query}\n\n"
-            f"Intelligence Agent's context:\n{json.dumps(context, ensure_ascii=False, indent=2)}\n\n"
-            f"Analysis Agent's draft:\n{json.dumps(draft, ensure_ascii=False, indent=2)}\n\n"
-            "Review per the four dimensions in your system prompt. Output JSON."
+            f"Intelligence context:\n{json.dumps(context, ensure_ascii=False, indent=2)}\n\n"
+            f"Analysis draft:\n{json.dumps(draft, ensure_ascii=False, indent=2)}\n\n"
+            "Review per the four dimensions in your system prompt. Output strict JSON."
         )
-
-        try:
-            resp = self._client.messages.create(
-                model=self.model,
-                max_tokens=1024,
-                system=CRITIC_SYSTEM_PROMPT,
-                messages=[{"role": "user", "content": user_msg}],
-            )
-            text = resp.content[0].text
-            parsed = self._extract_json(text)
-            parsed["agent"] = "critic"
-            parsed["mode"] = "real"
-            parsed["model"] = self.model
-            return parsed
-        except Exception as e:
-            mock = self._mock_call(context, draft, query)
-            mock["notice"] = f"⚠️ Real LLM call failed ({type(e).__name__}: {e}). Fell back to mock."
-            return mock
+        text, trace = self._llm.chat(CRITIC_SYSTEM_PROMPT, user_msg)
+        if text is None:                       # mock / degraded / failed
+            out = self._mock_call(context, draft, query)
+            out["trace"] = trace
+            return out
+        parsed = self._extract_json(text)
+        parsed.update({"agent": "critic", "mode": "real", "model": self.model, "trace": trace})
+        return parsed
 
     # ------------------------------------------------------------------ helpers
 
