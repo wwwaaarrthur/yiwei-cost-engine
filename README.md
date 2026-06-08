@@ -44,8 +44,6 @@ A **7-piece evaluation pipeline** — the part that separates this from a "demo 
 - **I do error analysis myself, not delegate it.** The `Breakdown` module isolated BC-flute underestimation; a separate **data-semantic audit** caught that the field I was scoring (`material ¥/m²`) was *not* the customer's contract price — a data-meaning bug that would have invalidated the whole eval. Finding that is PM work.
 - **I report honestly.** R² ≈ 0.18 for the interpretable baseline is disclosed, not hidden behind a marketing accuracy claim. All metrics are **conditional on known material area** and do not yet measure end-to-end sizing — stated plainly.
 
-> 🖼️ *Draft note for Yi: this section is strongest with one screenshot of `eval_runner.py` output or the drift report. I can generate a clean run and embed it — say the word.*
-
 ---
 
 ## 🎯 The PM Judgment: Why Pricing Does NOT Use an LLM
@@ -58,7 +56,7 @@ The most common AI-PM mistake in 2026 is forcing an LLM into a workflow that sho
 
 > **Interview line:** *"A fresh bootcamp grad bolts an LLM onto everything. A real PM knows when not to. I split the system on purpose — deterministic, auditable pricing; AI as a second pair of eyes for review and explanation. That's a risk-and-governance decision, not a capability gap."*
 
-The AI review layer itself is architected (a 3-role advisor, below) and is on the roadmap to run on a real model **with its own eval** — see [Roadmap](#roadmap). Until that evidence exists, this README does not claim it; that restraint is the point.
+The AI review layer (a 3-role advisor, below) **now runs on a real model with its own eval** — risk-recall, overreach guards, per-call traces — see the [Multi-Agent Advisor](#multi-agent-advisor-agents--real-llm-review-under-eval) section and [EVAL_REPORT.md §11](EVAL_REPORT.md). It still never sets the price; that boundary is the point.
 
 ---
 
