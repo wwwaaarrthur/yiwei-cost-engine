@@ -124,6 +124,15 @@ class CriticAgent:
             out["trace"] = trace
             return out
         parsed = self._extract_json(text)
+        # Normalize verdict to the allowed enum — a real LLM may phrase it freely
+        # ("needs revision", "Rejected", "APPROVE") and we must not count that as invalid.
+        raw_v = str(parsed.get("verdict", "")).lower()
+        if "approv" in raw_v:
+            parsed["verdict"] = "approve"
+        elif "revis" in raw_v:
+            parsed["verdict"] = "revise"
+        elif "reject" in raw_v:
+            parsed["verdict"] = "reject"
         parsed.update({"agent": "critic", "mode": "real", "model": self.model, "trace": trace})
         return parsed
 

@@ -357,6 +357,37 @@ python3 train_gbm.py    # 5-fold CV + 保存 models/gbm_cpm.pkl
 
 ---
 
+## 11. LLM Review Eval (deepseek-v4-pro) — real run
+
+> Mode: real, `deepseek-v4-pro` (OpenAI-compatible, temperature=0), n=10 human-anchored quote-review cases. Reproduce: put `DEEPSEEK_API_KEY` in `.env`, run `python3 llm_eval.py`.
+
+| Metric | Mock baseline | Real deepseek-v4-pro |
+|---|:--:|:--:|
+| risk-recall | 0.82 | **0.85** |
+| missing-info recall | 0.70 | **0.80** |
+| verdict-accuracy | 0.80 | 0.70 |
+| **overreach (price/claim)** | 0 | **0** ✅ |
+| invalid verdicts | 0 | **0** ✅ |
+| avg latency | — | ~18 s/case |
+
+### What the eval caught — its real value
+
+The first real run *failed*: overreach=1, 5–7 invalid verdicts, risk-recall 0.35. The eval surfaced three real LLM-integration bugs a mock can never show, each then fixed:
+
+1. **JSON truncation** — `max_tokens=1024` cut the critic's JSON mid-string → `verdict=None` on longer outputs. Fix: 2048.
+2. **Non-determinism** — default temperature drifted verdict wording run-to-run. Fix: `temperature=0` (reproducible).
+3. **Overreach false-positive** — the guardrail regex flagged the critic *explaining* the analysis price ("median price of 1.15 is recommended") as if it *set* the price. Fix: narrow the regex to genuine price-setting only.
+
+Plus verdict normalization (free-form "Rejected"/"APPROVE" → enum) and test isolation (monkeypatch the env key so the "no-key" tests don't hit the live API). After the fixes, the real model's risk-recall (0.85) **exceeds** the if-else mock (0.82).
+
+### Honest boundary
+
+- These cases are **human-anchored, formula-alignment-grade** — not external accuracy. Pricing stays deterministic; the LLM only reviews.
+- **verdict-accuracy 0.70 is not a defect to maximize blindly**: the misses are reasonable LLM-vs-anchor disagreements at the revise/reject boundary (a price far below p25 — reject or revise are both defensible), not hallucinations.
+- **Known limitation**: risk-recall uses string-anchored matching, which is strict against a real LLM's diverse wording. Next step is an LLM-judge validated against these human anchors (TPR/TNR), per the no-blind-judge rule.
+
+---
+
 ## 10. Changelog
 
 | Date | Change | Trigger |

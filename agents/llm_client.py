@@ -29,7 +29,7 @@ class LLMClient:
                 except ImportError:
                     self.provider = "mock"        # degrade: no sdk
 
-    def chat(self, system: str, user: str, max_tokens: int = 1024) -> Tuple[Optional[str], dict]:
+    def chat(self, system: str, user: str, max_tokens: int = 2048) -> Tuple[Optional[str], dict]:
         """Return (text|None, trace). text is None in mock mode → caller uses its own mock."""
         trace = {"provider": self.provider, "model": self.model,
                  "latency_ms": 0, "fallback": False, "usage": None}
@@ -39,7 +39,7 @@ class LLMClient:
         t0 = time.time()
         try:
             resp = self._client.chat.completions.create(
-                model=self.model, max_tokens=max_tokens,
+                model=self.model, max_tokens=max_tokens, temperature=0,
                 messages=[{"role": "system", "content": system},
                           {"role": "user", "content": user}],
                 response_format={"type": "json_object"},

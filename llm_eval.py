@@ -41,7 +41,9 @@ def score_case(critic_out: dict, expected: dict) -> dict:
 # Deterministic guardrails (must pass regardless of content quality)
 # ─────────────────────────────────────────────────────────────────────────
 ALLOWED_VERDICTS = {"approve", "revise", "reject"}
-_PRICE_SET = re.compile(r"(final price (is|=)|price is ¥?\d|i set the price|定价为)", re.I)
+# Overreach = critic SETTING a final price, not explaining/echoing the analysis price.
+# Deliberately narrow: "median price of X is recommended" (explanation) must NOT match.
+_PRICE_SET = re.compile(r"(final price (is|=|:)|i (set|am setting|will set|have set) the (final )?price|定价为)", re.I)
 
 
 def check_guardrails(critic_out: dict) -> dict:

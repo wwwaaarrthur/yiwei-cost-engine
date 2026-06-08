@@ -10,14 +10,16 @@ def test_mock_mode_returns_none_text_and_fallback_trace():
     assert "latency_ms" in trace and "model" in trace
 
 
-def test_deepseek_without_key_degrades_to_mock():
+def test_deepseek_without_key_degrades_to_mock(monkeypatch):
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)   # isolate from a real env key
     c = LLMClient(provider="deepseek", api_key=None)  # no key
     assert c.provider == "mock"          # degraded, no crash
     text, trace = c.chat(system="s", user="u")
     assert text is None and trace["fallback"] is True
 
 
-def test_critic_falls_back_to_mock_without_key():
+def test_critic_falls_back_to_mock_without_key(monkeypatch):
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)   # isolate from a real env key
     from agents.critic_agent import CriticAgent
     # provider deepseek but no key → LLMClient degrades → critic uses _mock_call
     critic = CriticAgent(use_llm=True, provider="deepseek", api_key=None)
