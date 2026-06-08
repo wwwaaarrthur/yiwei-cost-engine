@@ -113,7 +113,7 @@ A digital quotation and quality-control workflow built from **2,155 anonymized h
                                                               →Regression→ContractEval→DriftMonitor
 ```
 
-## Multi-Agent Advisor (`agents/`) — architecture today, evidence next
+## Multi-Agent Advisor (`agents/`) — real LLM review, under eval
 
 A **3-role collaboration** (Intelligence → Analysis → Critic) with deliberate engineering trade-offs:
 
@@ -121,7 +121,7 @@ A **3-role collaboration** (Intelligence → Analysis → Critic) with deliberat
 - **Heterogeneous degradation** — when a real LLM call fails, it drops to a mock instead of retrying the same provider.
 - **Surfaced intermediate artifacts** — the UI shows every agent's output, not just the final answer (debuggable, not black-box).
 
-> **Honest status:** the advisor ships **mock-first** (deterministic heuristics) with a real-LLM path as an optional toggle. The next phase (see Roadmap) takes the `Critic` role real on a hosted model **and puts its outputs under the same eval discipline as the pricing formula** — risk-recall + hallucination rate, ground-truthed against historical cost-deviation cases. Until that eval exists, no "AI-powered review" claim is made.
+> **Status (P1 done):** the `Critic` role now runs on a real model (`deepseek-v4-pro`, OpenAI-compatible) **with mock fallback** when no key is present — the public demo never breaks. Its outputs sit under the same eval discipline as the pricing formula: **risk-recall, hallucination/overreach guards, and per-call traces** over 10 human-anchored cases (`llm_eval.py`). Honest part of the story: the *first* real run **failed the overreach gate and produced invalid verdicts** — the eval caught JSON truncation, non-determinism, and a guardrail false-positive. After fixing, the real model's risk-recall (**0.85**) exceeds the if-else mock (0.82), with **overreach 0 / invalid verdicts 0**. See [EVAL_REPORT.md §11](EVAL_REPORT.md). The model never sets price — pricing stays deterministic.
 
 ## Quick Start
 
@@ -142,11 +142,11 @@ python3 eval_runner.py                                     # reproduce the eval 
 
 ## Roadmap
 
-Done: live Streamlit demo · contract-price eval 41.3%→14.3% (reproducible) · EB domestic 9.9% · employee-confirmed sizing engine · regression + drift monitors · GBM baseline experiment (R² 0.20→0.63, offline) · prepress proof verifier.
+Done: live Streamlit demo · contract-price eval 41.3%→14.3% (reproducible) · EB domestic 9.9% · employee-confirmed sizing engine · regression + drift monitors · GBM baseline experiment (R² 0.20→0.63, offline) · prepress proof verifier · **real DeepSeek Critic + LLM-output eval (risk-recall 0.85, overreach 0)**.
 
 Highest-ROI next:
 
-- [ ] **P1 — Take the `Critic` advisor real + give its LLM outputs a dedicated eval** (risk-recall + hallucination rate, human-anchored labels, trace table with model/version/cost/latency). This is the move that makes the AI layer *load-bearing with evidence*.
+- [x] **P1 — `Critic` advisor real on `deepseek-v4-pro` + dedicated LLM-output eval** ✅ (risk-recall 0.85 > mock 0.82, overreach 0, invalid 0, per-call traces; the eval caught 3 real integration bugs on first run — see [EVAL_REPORT.md §11](EVAL_REPORT.md)). Next: an LLM-judge validated against the human anchors (TPR/TNR) to replace string-match recall.
 - [ ] **Wire the frontline cutting-size formula into the eval.** The senior-worker formula is captured in `sizing_engine.py` ✅; next: replace the known-area approximation in `eval_runner.py`, validate the formula against independent cutting records (accuracy, not just formula-alignment), then report end-to-end quote accuracy instead of the area-conditional 14.3%.
 - [ ] Add product-configuration features for BC export outliers.
 - [ ] Time one live quote flow to verify/qualify the 30min→30s latency claim.
