@@ -1,0 +1,593 @@
+{
+  "generated_at_utc": "2026-07-04T10:56:22.241253+00:00",
+  "critic_reference_commit": "75ba282",
+  "provider": "deepseek",
+  "model": "deepseek-v4-pro",
+  "db": "data/demo.db",
+  "preserved_seed_rows": 10,
+  "new_rows": 30,
+  "total_rows": 40,
+  "yi_verdict_nonempty": 0,
+  "yi_note_nonempty": 0,
+  "old_extra_rows_discarded": 0,
+  "candidate_rows": 45,
+  "failed_candidates": [],
+  "available_buckets": {
+    "domestic_or_unspecified/AB": 261,
+    "domestic_or_unspecified/BC": 155,
+    "domestic_or_unspecified/EB": 993,
+    "domestic_or_unspecified/EE": 7,
+    "domestic_or_unspecified/MIXED_AB_BC": 205,
+    "domestic_or_unspecified/MIXED_EB_BC": 9,
+    "domestic_or_unspecified/SINGLE_B": 25,
+    "domestic_or_unspecified/SINGLE_C": 53,
+    "domestic_or_unspecified/SINGLE_E": 26,
+    "export/AB": 4
+  },
+  "selected_buckets": {
+    "export/AB": 4,
+    "domestic_or_unspecified/EB": 5,
+    "domestic_or_unspecified/AB": 5,
+    "domestic_or_unspecified/MIXED_AB_BC": 5,
+    "domestic_or_unspecified/BC": 5,
+    "domestic_or_unspecified/SINGLE_C": 5,
+    "domestic_or_unspecified/SINGLE_E": 4,
+    "domestic_or_unspecified/SINGLE_B": 4,
+    "domestic_or_unspecified/MIXED_EB_BC": 4,
+    "domestic_or_unspecified/EE": 4
+  },
+  "selected_order_type": {
+    "export": 4,
+    "domestic_or_unspecified": 41
+  },
+  "selected_flute": {
+    "AB": 9,
+    "EB": 5,
+    "MIXED_AB_BC": 5,
+    "BC": 5,
+    "SINGLE_C": 5,
+    "SINGLE_E": 4,
+    "SINGLE_B": 4,
+    "MIXED_EB_BC": 4,
+    "EE": 4
+  },
+  "valid_selected_buckets": {
+    "export/AB": 4,
+    "domestic_or_unspecified/EB": 3,
+    "domestic_or_unspecified/AB": 3,
+    "domestic_or_unspecified/MIXED_AB_BC": 3,
+    "domestic_or_unspecified/BC": 3,
+    "domestic_or_unspecified/SINGLE_C": 3,
+    "domestic_or_unspecified/SINGLE_E": 3,
+    "domestic_or_unspecified/SINGLE_B": 3,
+    "domestic_or_unspecified/MIXED_EB_BC": 3,
+    "domestic_or_unspecified/EE": 2
+  },
+  "valid_selected_order_type": {
+    "export": 4,
+    "domestic_or_unspecified": 26
+  },
+  "valid_selected_flute": {
+    "AB": 7,
+    "EB": 3,
+    "MIXED_AB_BC": 3,
+    "BC": 3,
+    "SINGLE_C": 3,
+    "SINGLE_E": 3,
+    "SINGLE_B": 3,
+    "MIXED_EB_BC": 3,
+    "EE": 2
+  },
+  "traces": [
+    {
+      "case_id": "demo-order-0002",
+      "source_order_id": 2,
+      "order_type": "export",
+      "flute_norm": "AB",
+      "critic_verdict": "approve",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 20989,
+      "usage": {
+        "prompt": 1139,
+        "completion": 1139
+      },
+      "fallback": false,
+      "candidate_index": 1,
+      "valid_index": 1
+    },
+    {
+      "case_id": "demo-order-1467",
+      "source_order_id": 1467,
+      "order_type": "export",
+      "flute_norm": "AB",
+      "critic_verdict": "approve",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 24513,
+      "usage": {
+        "prompt": 1139,
+        "completion": 1395
+      },
+      "fallback": false,
+      "candidate_index": 2,
+      "valid_index": 2
+    },
+    {
+      "case_id": "demo-order-1442",
+      "source_order_id": 1442,
+      "order_type": "export",
+      "flute_norm": "AB",
+      "critic_verdict": "revise",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 28137,
+      "usage": {
+        "prompt": 1139,
+        "completion": 1498
+      },
+      "fallback": false,
+      "candidate_index": 3,
+      "valid_index": 3
+    },
+    {
+      "case_id": "demo-order-0027",
+      "source_order_id": 27,
+      "order_type": "export",
+      "flute_norm": "AB",
+      "critic_verdict": "approve",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 20510,
+      "usage": {
+        "prompt": 1139,
+        "completion": 1204
+      },
+      "fallback": false,
+      "candidate_index": 4,
+      "valid_index": 4
+    },
+    {
+      "case_id": "demo-order-1109",
+      "source_order_id": 1109,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "EB",
+      "critic_verdict": "revise",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 28138,
+      "usage": {
+        "prompt": 1512,
+        "completion": 1442
+      },
+      "fallback": false,
+      "candidate_index": 5,
+      "valid_index": 5
+    },
+    {
+      "case_id": "demo-order-0212",
+      "source_order_id": 212,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "AB",
+      "critic_verdict": "revise",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 24887,
+      "usage": {
+        "prompt": 1608,
+        "completion": 1288
+      },
+      "fallback": false,
+      "candidate_index": 6,
+      "valid_index": 6
+    },
+    {
+      "case_id": "demo-order-0586",
+      "source_order_id": 586,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "MIXED_AB_BC",
+      "critic_verdict": "approve",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 23947,
+      "usage": {
+        "prompt": 1677,
+        "completion": 1405
+      },
+      "fallback": false,
+      "candidate_index": 7,
+      "valid_index": 7
+    },
+    {
+      "case_id": "demo-order-0765",
+      "source_order_id": 765,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "BC",
+      "critic_verdict": "approve",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 13148,
+      "usage": {
+        "prompt": 1804,
+        "completion": 770
+      },
+      "fallback": false,
+      "candidate_index": 8,
+      "valid_index": 8
+    },
+    {
+      "case_id": "demo-order-2075",
+      "source_order_id": 2075,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "SINGLE_C",
+      "critic_verdict": "revise",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 17686,
+      "usage": {
+        "prompt": 1532,
+        "completion": 956
+      },
+      "fallback": false,
+      "candidate_index": 9,
+      "valid_index": 9
+    },
+    {
+      "case_id": "demo-order-0067",
+      "source_order_id": 67,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "SINGLE_E",
+      "critic_verdict": "revise",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 16281,
+      "usage": {
+        "prompt": 1499,
+        "completion": 888
+      },
+      "fallback": false,
+      "candidate_index": 10,
+      "valid_index": 10
+    },
+    {
+      "case_id": "demo-order-0262",
+      "source_order_id": 262,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "SINGLE_B",
+      "critic_verdict": "approve",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 13037,
+      "usage": {
+        "prompt": 1501,
+        "completion": 745
+      },
+      "fallback": false,
+      "candidate_index": 11,
+      "valid_index": 11
+    },
+    {
+      "case_id": "demo-order-0896",
+      "source_order_id": 896,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "MIXED_EB_BC",
+      "critic_verdict": "approve",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 29145,
+      "usage": {
+        "prompt": 1695,
+        "completion": 1720
+      },
+      "fallback": false,
+      "candidate_index": 12,
+      "valid_index": 12
+    },
+    {
+      "case_id": "demo-order-1142",
+      "source_order_id": 1142,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "EE",
+      "critic_verdict": "approve",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 8280,
+      "usage": {
+        "prompt": 1410,
+        "completion": 554
+      },
+      "fallback": false,
+      "candidate_index": 13,
+      "valid_index": 13
+    },
+    {
+      "case_id": "demo-order-1963",
+      "source_order_id": 1963,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "EB",
+      "critic_verdict": "approve",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 19876,
+      "usage": {
+        "prompt": 1512,
+        "completion": 1041
+      },
+      "fallback": false,
+      "candidate_index": 14,
+      "valid_index": 14
+    },
+    {
+      "case_id": "demo-order-0472",
+      "source_order_id": 472,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "AB",
+      "critic_verdict": "revise",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 15006,
+      "usage": {
+        "prompt": 1610,
+        "completion": 759
+      },
+      "fallback": false,
+      "candidate_index": 15,
+      "valid_index": 15
+    },
+    {
+      "case_id": "demo-order-0172",
+      "source_order_id": 172,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "MIXED_AB_BC",
+      "critic_verdict": "approve",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 32928,
+      "usage": {
+        "prompt": 1699,
+        "completion": 1768
+      },
+      "fallback": false,
+      "candidate_index": 16,
+      "valid_index": 16
+    },
+    {
+      "case_id": "demo-order-1274",
+      "source_order_id": 1274,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "BC",
+      "critic_verdict": "revise",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 14948,
+      "usage": {
+        "prompt": 1721,
+        "completion": 920
+      },
+      "fallback": false,
+      "candidate_index": 17,
+      "valid_index": 17
+    },
+    {
+      "case_id": "demo-order-1501",
+      "source_order_id": 1501,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "SINGLE_C",
+      "critic_verdict": "approve",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 15101,
+      "usage": {
+        "prompt": 1534,
+        "completion": 867
+      },
+      "fallback": false,
+      "candidate_index": 18,
+      "valid_index": 18
+    },
+    {
+      "case_id": "demo-order-0909",
+      "source_order_id": 909,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "SINGLE_E",
+      "critic_verdict": "approve",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 29745,
+      "usage": {
+        "prompt": 1507,
+        "completion": 1585
+      },
+      "fallback": false,
+      "candidate_index": 19,
+      "valid_index": 19
+    },
+    {
+      "case_id": "demo-order-0587",
+      "source_order_id": 587,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "SINGLE_B",
+      "critic_verdict": "approve",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 20481,
+      "usage": {
+        "prompt": 1501,
+        "completion": 1037
+      },
+      "fallback": false,
+      "candidate_index": 20,
+      "valid_index": 20
+    },
+    {
+      "case_id": "demo-order-0799",
+      "source_order_id": 799,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "MIXED_EB_BC",
+      "critic_verdict": "revise",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 24879,
+      "usage": {
+        "prompt": 1249,
+        "completion": 1483
+      },
+      "fallback": false,
+      "candidate_index": 21,
+      "valid_index": 21
+    },
+    {
+      "case_id": "demo-order-1138",
+      "source_order_id": 1138,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "EE",
+      "critic_verdict": "approve",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 10031,
+      "usage": {
+        "prompt": 1410,
+        "completion": 586
+      },
+      "fallback": false,
+      "candidate_index": 22,
+      "valid_index": 22
+    },
+    {
+      "case_id": "demo-order-0315",
+      "source_order_id": 315,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "EB",
+      "critic_verdict": "approve",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 9214,
+      "usage": {
+        "prompt": 1512,
+        "completion": 543
+      },
+      "fallback": false,
+      "candidate_index": 23,
+      "valid_index": 23
+    },
+    {
+      "case_id": "demo-order-1732",
+      "source_order_id": 1732,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "AB",
+      "critic_verdict": "approve",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 12591,
+      "usage": {
+        "prompt": 1610,
+        "completion": 739
+      },
+      "fallback": false,
+      "candidate_index": 24,
+      "valid_index": 24
+    },
+    {
+      "case_id": "demo-order-1808",
+      "source_order_id": 1808,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "MIXED_AB_BC",
+      "critic_verdict": "approve",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 13472,
+      "usage": {
+        "prompt": 1699,
+        "completion": 747
+      },
+      "fallback": false,
+      "candidate_index": 25,
+      "valid_index": 25
+    },
+    {
+      "case_id": "demo-order-1662",
+      "source_order_id": 1662,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "BC",
+      "critic_verdict": "approve",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 8871,
+      "usage": {
+        "prompt": 1804,
+        "completion": 536
+      },
+      "fallback": false,
+      "candidate_index": 26,
+      "valid_index": 26
+    },
+    {
+      "case_id": "demo-order-2076",
+      "source_order_id": 2076,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "SINGLE_C",
+      "critic_verdict": "reject",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 28649,
+      "usage": {
+        "prompt": 1532,
+        "completion": 1723
+      },
+      "fallback": false,
+      "candidate_index": 27,
+      "valid_index": 27
+    },
+    {
+      "case_id": "demo-order-0907",
+      "source_order_id": 907,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "SINGLE_E",
+      "critic_verdict": "revise",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 28584,
+      "usage": {
+        "prompt": 1507,
+        "completion": 1478
+      },
+      "fallback": false,
+      "candidate_index": 28,
+      "valid_index": 28
+    },
+    {
+      "case_id": "demo-order-1215",
+      "source_order_id": 1215,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "SINGLE_B",
+      "critic_verdict": "approve",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 27542,
+      "usage": {
+        "prompt": 1501,
+        "completion": 1377
+      },
+      "fallback": false,
+      "candidate_index": 29,
+      "valid_index": 29
+    },
+    {
+      "case_id": "demo-order-0278",
+      "source_order_id": 278,
+      "order_type": "domestic_or_unspecified",
+      "flute_norm": "MIXED_EB_BC",
+      "critic_verdict": "approve",
+      "mode": "real",
+      "model": "deepseek-v4-pro",
+      "latency_ms": 15070,
+      "usage": {
+        "prompt": 1695,
+        "completion": 861
+      },
+      "fallback": false,
+      "candidate_index": 30,
+      "valid_index": 30
+    }
+  ]
+}

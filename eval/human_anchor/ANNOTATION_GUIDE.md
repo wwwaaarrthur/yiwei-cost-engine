@@ -5,10 +5,11 @@
 ## Source Boundary
 
 - Source file: `data/llm_eval_cases.json`.
-- Available source cases: 10 cases, not 40 (source: `EVAL_REPORT.md:362`, `docs/plans/2026-06-07-llm-eval-p1.md:25`).
+- Seed source cases: 10 original LLM eval cases (source: `EVAL_REPORT.md:362`, `docs/plans/2026-06-07-llm-eval-p1.md:25`).
+- Expansion source cases: 30 real anonymized orders sampled from `data/demo.db.process_sheets` and reviewed by the real `deepseek-v4-pro` critic pipeline.
 - Current anchor file: `eval/human_anchor/anchor_set_40.csv`.
-- Rows currently populated: 10 actual source cases.
-- Missing to requested target: 30 additional real LLM eval cases must be authored before this can be a true 40-case anchor set.
+- Rows currently populated: 40 cases total; rows 1-10 preserve the original eval fixture, rows 11-40 are demo.db order expansions.
+- Yi label columns remain empty until Yi annotates them.
 
 ## Columns
 
@@ -16,7 +17,7 @@
 |---|---|---|
 | `case_id` | Generated | Stable case ID from the existing LLM eval fixture. |
 | `input_summary` | Generated | Query, sample context, price range, draft price, and warning summary. |
-| `critic_verdict` | Generated | Current mock Critic output: `approve`, `revise`, or `reject`. |
+| `critic_verdict` | Generated | Critic output: `approve`, `revise`, or `reject`; expansion rows use the real `deepseek-v4-pro` critic pipeline. |
 | `critic_reason_summary` | Generated | Short reason or user-facing critic message. |
 | `yi_verdict` | Yi only | Yi's label: `approve`, `revise`, or `reject`. Leave blank until Yi labels it. |
 | `yi_note` | Yi only | Optional short note explaining boundary cases or disagreement. |
@@ -36,7 +37,7 @@
 
 ## Time Estimate
 
-- Full requested 40-row set after 30 more real cases exist: about 2-3 hours, per the task brief.
+- Full 40-row set: about 2-3 hours, per the task brief.
 
 ## Compute Agreement
 
