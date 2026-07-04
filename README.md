@@ -9,6 +9,8 @@
 
 [**🚀 Live Demo · yiwei-cost-engine.streamlit.app**](https://yiwei-cost-engine.streamlit.app)
 
+Public zero-login render verified on 2026-07-04; evidence is stored outside this public repo at `memory/evidence/streamlit-public-verified-20260704.png`.
+
 ---
 
 ## For Recruiters / Interviewers — the 60-second version
@@ -149,6 +151,8 @@ Highest-ROI next:
 - [ ] Add product-configuration features for BC export outliers.
 - [ ] Time one live quote flow to verify/qualify the 30min→30s latency claim.
 - [ ] Add one anonymized UAT / stakeholder-feedback artifact.
+
+UAT/adoption boundary: prepared templates and demo availability are not UAT passed, user sign-off, or sustained adoption. Those claims stay pending until real business-user evidence exists.
 
 > On GBM: a gradient-boosted baseline reaches R² 0.63 offline, but it is **deliberately not shipped** into pricing at n=45 — productionizing a model on that little data would be a judgment failure, not a feature. It stays an evaluated experiment until data and business risk justify it.
 
