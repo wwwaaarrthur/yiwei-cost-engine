@@ -38,6 +38,18 @@ def blocked_payload(reason: str, runs: int, details: list[dict] | None = None) -
     }
 
 
+def app_frame(page):
+    """Streamlit Community Cloud serves the app inside an iframe at <url>/~/+/.
+
+    Locators on the top-level page see zero widgets, so interactions must target
+    the app frame. Falls back to the page itself for locally served apps.
+    """
+    for frame in page.frames:
+        if "/~/+" in frame.url:
+            return frame
+    return page
+
+
 def run_once(playwright, url: str, timeout_ms: int, run_index: int) -> dict:
     start = time.perf_counter()
     checkpoints: dict[str, float] = {"start_open_url": 0.0}
@@ -61,14 +73,43 @@ def run_once(playwright, url: str, timeout_ms: int, run_index: int) -> dict:
                 "elapsed_until_block_seconds": elapsed(start),
             }
 
-        quote_button = page.get_by_text("开始报价", exact=False)
+        app = app_frame(page)
+        checkpoints["app_frame_resolved"] = elapsed(start)
+
+        # HITL gate: three needs-confirmation selects (成型方式/面纸拼版/瓦楞下料拼版)
+        # must be set before the app will quote. Confirming them is part of the
+        # workflow being timed.
+        selects = app.locator('[data-baseweb="select"]')
+        confirmed = 0
+        for i in range(selects.count()):
+            box = selects.nth(i)
+            if not box.is_visible():
+                continue
+            label = box.inner_text()[:20]
+            if "请选择" not in label and "需确认" not in label:
+                continue
+            box.click(timeout=10000)
+            page.wait_for_timeout(600)
+            options = app.locator('li[role="option"]')
+            for j in range(options.count()):
+                text = options.nth(j).inner_text()
+                if "请选择" not in text and "需确认" not in text:
+                    options.nth(j).click(timeout=10000)
+                    confirmed += 1
+                    break
+            page.wait_for_timeout(400)
+        checkpoints["required_params_confirmed"] = elapsed(start)
+        checkpoints["required_params_count"] = confirmed
+
+        quote_button = app.get_by_role("button", name="开始报价")
         if quote_button.count() == 0:
-            body_text = page.locator("body").inner_text(timeout=5000)
+            body_text = app.locator("body").inner_text(timeout=5000)
             return {
                 "run": run_index,
                 "status": "blocked-ui",
                 "reason": "quote-button-not-visible",
                 "title": title,
+                "app_frame_url": getattr(app, "url", ""),
                 "body_chars": len(body_text),
                 "checkpoints": checkpoints,
                 "elapsed_until_block_seconds": elapsed(start),
@@ -76,19 +117,15 @@ def run_once(playwright, url: str, timeout_ms: int, run_index: int) -> dict:
 
         quote_button.first.click(timeout=timeout_ms)
         checkpoints["quote_clicked"] = elapsed(start)
-        page.get_by_text("报价结果", exact=False).first.wait_for(timeout=timeout_ms)
+        # Markers below only render after a successful quote; the intro sentence
+        # contains 建议报价/成本拆解/相似历史订单, so those are unsafe markers.
+        app.get_by_text("报价结果", exact=False).first.wait_for(timeout=timeout_ms)
         checkpoints["quote_result_rendered"] = elapsed(start)
 
-        cost_expander = page.get_by_text("成本明细", exact=False)
-        if cost_expander.count() > 0:
-            cost_expander.first.click(timeout=timeout_ms)
-        page.get_by_text("成本构成", exact=False).first.wait_for(timeout=timeout_ms)
+        app.get_by_text("成本明细", exact=False).first.wait_for(timeout=timeout_ms)
         checkpoints["cost_breakdown_rendered"] = elapsed(start)
 
-        similar_expander = page.get_by_text("相似历史订单", exact=False)
-        if similar_expander.count() > 0:
-            similar_expander.first.click(timeout=timeout_ms)
-        page.get_by_text("相似历史订单", exact=False).first.wait_for(timeout=timeout_ms)
+        app.get_by_text("📋 相似历史订单", exact=False).first.wait_for(timeout=timeout_ms)
         checkpoints["similar_orders_rendered"] = elapsed(start)
 
         return {
